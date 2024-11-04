@@ -123,9 +123,9 @@ int main()
 	triangle.point_two = triangleP2;
 	triangle.point_three = triangleP3;
 
-	// ray at origin aber ich verändere die Strahlen,
-	// so dass sie in alle richtungen gehen, nicht nur nach links und rechts
-	// create a ray starting at origin 0 0 0 
+
+	// create a ray starting at z = -100 so you can see objects 
+	// which are centered at 0 0 0
 	glm::vec3 vecOrig(0.0f, 0.0f, -100.0f);
 	glm::vec3 vecDir(2.0f, 2.0f, 100.0f);
 
@@ -148,6 +148,50 @@ int main()
 	
 	std::vector<Triangle> circle_triangles = triangleobjloader("simple_sphere.obj");
 
+
+	std::vector<glm::vec2> image_points;
+	std::vector<glm::vec3> image_colors;
+	for (int i = -image_width / 2; i < image_width / 2; ++i)
+	{
+		for (int j = -image_height / 2; j < image_height / 2; ++j)
+		{
+			ray.direction.x = i;
+			ray.direction.y = j;
+
+			/*if (rayTriangleIntersection(ray, triangle) != -INFINITY) {
+				img.draw_point(i, j, color);
+			} */
+			float distance_comparison = INFINITY;
+			glm::vec3 color_point;
+			for (int k = 0; k < circle_triangles.size(); k++) {
+				float f_distance = rayTriangleIntersection(&ray, &circle_triangles[k]);
+				if (f_distance != -INFINITY) {
+					if (f_distance < distance_comparison) {
+						distance_comparison = f_distance;
+						int i_distance = int(f_distance * 70);
+						glm::vec3 temp_color(i_distance * 3, i_distance * 3, i_distance * 3);
+						color_point = temp_color;
+					}
+				}
+			}
+			if (distance_comparison != INFINITY) {
+				glm::vec2 image_point(float(i + image_width / 2), float(j + image_height / 2));
+				image_points.push_back(image_point);
+				image_colors.push_back(color_point);
+			}
+
+		}
+	}
+	std::cout << "Size of image points" << image_points.size();
+	// draw pixels found in circle
+	for (int i = 0; i < image_points.size(); i++) {
+		color[0] = image_colors[i].x;
+		color[1] = image_colors[i].y;
+		color[2] = image_colors[i].z;
+
+		img.draw_point(image_points[i].x, image_points[i].y, color);
+	}
+	/*
 	// start timer to measure time
 	auto start = std::chrono::high_resolution_clock::now();
 	for (int i = -image_width/2; i < image_width/2; ++i)
@@ -156,10 +200,11 @@ int main()
 		{
 			ray.direction.x = i;
 			ray.direction.y = j;
-
+			*/
 			/*if (rayTriangleIntersection(ray, triangle) != -INFINITY) {
 				img.draw_point(i, j, color);
 			} */
+			/*
 			for (int k = 0; k < circle_triangles.size(); k++){
 				float f_distance = rayTriangleIntersection(&ray, &circle_triangles[k]);
 				if (f_distance != -INFINITY) {
@@ -180,73 +225,7 @@ int main()
 
 	// Output the duration
 	std::cout << "Time taken: " << duration.count() << " seconds";
-
+	*/
 	// Display the image.
 	img.display("Simple Raytracer by Leon Lang");
-
-	// unsigned char purple[] = { 255,0,255 };        // Define a purple color
-	// img.draw_text(100, 100, "Hello World", purple); // Draw a purple "Hello world" at coordinates (100,100).
-            
-	/**
-	std::string inputfile = "cornell_box.obj";
-	tinyobj::ObjReaderConfig reader_config;
-	reader_config.mtl_search_path = "./"; // Path to material files
-
-	tinyobj::ObjReader reader;
-
-	if (!reader.ParseFromFile(inputfile, reader_config)) {
-		if (!reader.Error().empty()) {
-			std::cerr << "TinyObjReader: " << reader.Error();
-		}
-		exit(1);
-	}
-
-	if (!reader.Warning().empty()) {
-		std::cout << "TinyObjReader: " << reader.Warning();
-	}
-
-	auto& attrib = reader.GetAttrib();
-	auto& shapes = reader.GetShapes();
-	auto& materials = reader.GetMaterials();
-
-	// Loop over shapes
-	for (size_t s = 0; s < shapes.size(); s++) {
-		// Loop over faces(polygon)
-		size_t index_offset = 0;
-		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
-			size_t fv = size_t(shapes[s].mesh.num_face_vertices[f]);
-			std::cout << f;
-			// Loop over vertices in the face.
-			for (size_t v = 0; v < fv; v++) {
-				// access to vertex
-				tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
-				tinyobj::real_t vx = attrib.vertices[3 * size_t(idx.vertex_index) + 0];
-				tinyobj::real_t vy = attrib.vertices[3 * size_t(idx.vertex_index) + 1];
-				tinyobj::real_t vz = attrib.vertices[3 * size_t(idx.vertex_index) + 2];
-
-				// Check if `normal_index` is zero or positive. negative = no normal data
-				if (idx.normal_index >= 0) {
-					tinyobj::real_t nx = attrib.normals[3 * size_t(idx.normal_index) + 0];
-					tinyobj::real_t ny = attrib.normals[3 * size_t(idx.normal_index) + 1];
-					tinyobj::real_t nz = attrib.normals[3 * size_t(idx.normal_index) + 2];
-				}
-
-				// Check if `texcoord_index` is zero or positive. negative = no texcoord data
-				if (idx.texcoord_index >= 0) {
-					tinyobj::real_t tx = attrib.texcoords[2 * size_t(idx.texcoord_index) + 0];
-					tinyobj::real_t ty = attrib.texcoords[2 * size_t(idx.texcoord_index) + 1];
-				}
-
-				// Optional: vertex colors
-				// tinyobj::real_t red   = attrib.colors[3*size_t(idx.vertex_index)+0];
-				// tinyobj::real_t green = attrib.colors[3*size_t(idx.vertex_index)+1];
-				// tinyobj::real_t blue  = attrib.colors[3*size_t(idx.vertex_index)+2];
-			}
-			index_offset += fv;
-
-			// per-face material
-			shapes[s].mesh.material_ids[f];
-		}
-	}
-	**/
 }
