@@ -6,6 +6,8 @@
 #include <gtc/matrix_transform.hpp>
 #include <gtc/type_ptr.hpp>
 #include "CImg.h"
+#include <chrono>
+
 using namespace cimg_library;
 #define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
 // Optional. define TINYOBJLOADER_USE_MAPBOX_EARCUT gives robust trinagulation. Requires C++11
@@ -61,19 +63,14 @@ float rayTriangleIntersection(Ray ray, Triangle triangle) {
 	return glm::dot(p1p3, qvec) * invDet;
 }
 
-
-
-int main()
-{
-
-	std::string inputfile = "sphere.obj";
+std::vector<Triangle> triangleobjloader(){
+	std::string inputfile = "simple_sphere.obj";
 	tinyobj::ObjReader reader;
 
 	if (!reader.ParseFromFile(inputfile)) {
 		if (!reader.Error().empty()) {
 			std::cerr << "TinyObjReader: " << reader.Error();
 		}
-		return -1;
 	}
 
 	if (!reader.Warning().empty()) {
@@ -124,8 +121,11 @@ int main()
 	}
 	std::cout << "Size:\n";
 	std::cout << triangles.size();
+	return triangles;
+}
 
-
+int main()
+{
 	// create a triangle
 	glm::vec3 triangleP1(600.0f, 100.0f, 3.0f);
 	glm::vec3 triangleP2(200.0f, 100.0f, 3.0f);
@@ -158,6 +158,11 @@ int main()
 	// define color for rays
 	unsigned char color[] = { 255,128,64 };
 	// go through each pixel in image and check if there is an intersection with triangle
+	
+	std::vector<Triangle> triangleto = triangleobjloader();
+
+	// start timer to measure time
+	auto start = std::chrono::high_resolution_clock::now();
 	for (int i = -image_width/2; i < image_width/2; ++i)
 	{
 		for (int j = -image_height/2; j < image_height/2; ++j)
@@ -167,15 +172,15 @@ int main()
 			/*if (rayTriangleIntersection(ray, triangle) != -INFINITY) {
 				img.draw_point(i, j, color);
 			} */
-			for (int k = 0; k < triangles.size(); k++){
-				float f_distance = rayTriangleIntersection(ray, triangles[k]);
+			for (int k = 0; k < triangleto.size(); k++){
+				float f_distance = rayTriangleIntersection(ray, triangleto[k]);
 				if (f_distance != -INFINITY) {
 					int i_distance = int(f_distance * 70);
 					color[0] = i_distance*3;
-					color[1] = i_distance/2;
-					color[2] = i_distance;
+					color[1] = i_distance*3;
+					color[2] = i_distance*3;
 					img.draw_point(i+image_width/2, j+image_height/2, color);
-					k = triangles.size();
+					k = triangleto.size();
 				}
 			}
 		}
