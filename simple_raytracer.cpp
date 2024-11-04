@@ -127,7 +127,7 @@ int main()
 	// so dass sie in alle richtungen gehen, nicht nur nach links und rechts
 	// create a ray starting at origin 0 0 0 
 	glm::vec3 vecOrig(0.0f, 0.0f, -100.0f);
-	glm::vec3 vecDir(2.0f, 2.0f, 1.0f);
+	glm::vec3 vecDir(2.0f, 2.0f, 100.0f);
 
 	Ray ray;
 	ray.direction = vecDir;
@@ -146,7 +146,7 @@ int main()
 	unsigned char color[] = { 255,128,64 };
 	// go through each pixel in image and check if there is an intersection with triangle
 	
-	std::vector<Triangle> triangleto = triangleobjloader("simple_sphere.obj");
+	std::vector<Triangle> circle_triangles = triangleobjloader("simple_sphere.obj");
 
 	// start timer to measure time
 	auto start = std::chrono::high_resolution_clock::now();
@@ -154,20 +154,21 @@ int main()
 	{
 		for (int j = -image_height/2; j < image_height/2; ++j)
 		{
-			glm::vec3 vecNewDir(i, j, 100.0f);
-			ray.direction = vecNewDir;
+			ray.direction.x = i;
+			ray.direction.y = j;
+
 			/*if (rayTriangleIntersection(ray, triangle) != -INFINITY) {
 				img.draw_point(i, j, color);
 			} */
-			for (int k = 0; k < triangleto.size(); k++){
-				float f_distance = rayTriangleIntersection(&ray, &triangleto[k]);
+			for (int k = 0; k < circle_triangles.size(); k++){
+				float f_distance = rayTriangleIntersection(&ray, &circle_triangles[k]);
 				if (f_distance != -INFINITY) {
 					int i_distance = int(f_distance * 70);
 					color[0] = i_distance*3;
 					color[1] = i_distance*3;
 					color[2] = i_distance*3;
 					img.draw_point(i+image_width/2, j+image_height/2, color);
-					k = triangleto.size();
+					k = circle_triangles.size();
 				}
 			}
 		}
