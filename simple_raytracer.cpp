@@ -27,44 +27,31 @@ struct Triangle {
 };
 // Intersection of a ray with a triangle
 // This implementation uses the Möller–Trumbore intersection algorithm
-float rayTriangleIntersection(Ray ray, Triangle triangle) {
-	// Step 1: Calculate vectors for two edges sharing triangle.point_one
-	glm::vec3 p1p2 = triangle.point_two - triangle.point_one;
-	glm::vec3 p1p3 = triangle.point_three - triangle.point_one;
 
-	// Step 2: Calculate the determinant
-	glm::vec3 pvec = glm::cross(ray.direction, p1p3);
+
+inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
+	glm::vec3 p1p2 = triangle->point_two - triangle->point_one;
+	glm::vec3 p1p3 = triangle->point_three - triangle->point_one;
+	glm::vec3 pvec = glm::cross(ray->direction, p1p3);
 	float det = glm::dot(p1p2, pvec);
 
-	// Step 3: If the determinant is near zero, the ray lies in the plane of the triangle
-	if (det < 0.000001)
-		return -INFINITY;
+	if (det < 0.000001f) return -INFINITY;
 
-	// Step 4: Calculate the inverse of the determinant
-	float invDet = 1.0 / det;
-
-	// Step 5: Calculate the distance from triangle.point_one to the ray origin
-	glm::vec3 tvec = ray.origin - triangle.point_one;
-
-	// Step 6: Calculate the u parameter and test bounds
+	float invDet = 1.0f / det;
+	glm::vec3 tvec = ray->origin - triangle->point_one;
 	float u = glm::dot(tvec, pvec) * invDet;
-	if (u < 0 || u > 1)
-		return -INFINITY;
+	if (u < 0.0f || u > 1.0f) return -INFINITY;
 
-	// Step 7: Prepare to test the v parameter
 	glm::vec3 qvec = glm::cross(tvec, p1p2);
+	float v = glm::dot(ray->direction, qvec) * invDet;
+	if (v < 0.0f || u + v > 1.0f) return -INFINITY;
 
-	// Step 8: Calculate the v parameter and test bounds
-	float v = glm::dot(ray.direction, qvec) * invDet;
-	if (v < 0 || u + v > 1)
-		return -INFINITY;
-
-	// Step 9: Calculate t, the distance along the ray to the intersection point
 	return glm::dot(p1p3, qvec) * invDet;
 }
 
-std::vector<Triangle> triangleobjloader(){
-	std::string inputfile = "simple_sphere.obj";
+
+std::vector<Triangle> triangleobjloader(std::string objfilename){
+	std::string inputfile = objfilename;
 	tinyobj::ObjReader reader;
 
 	if (!reader.ParseFromFile(inputfile)) {
@@ -148,8 +135,8 @@ int main()
 
 
 	// create image 600x400
-	int image_width = 600;
-	int image_height = 400;
+	int image_width = 300;
+	int image_height = 250;
 	CImg<unsigned char> img(image_width, image_height, 1, 3);
 
 	// Set pixel values to 0 (color : black)
@@ -159,7 +146,7 @@ int main()
 	unsigned char color[] = { 255,128,64 };
 	// go through each pixel in image and check if there is an intersection with triangle
 	
-	std::vector<Triangle> triangleto = triangleobjloader();
+	std::vector<Triangle> triangleto = triangleobjloader("simple_sphere.obj");
 
 	// start timer to measure time
 	auto start = std::chrono::high_resolution_clock::now();
@@ -173,7 +160,7 @@ int main()
 				img.draw_point(i, j, color);
 			} */
 			for (int k = 0; k < triangleto.size(); k++){
-				float f_distance = rayTriangleIntersection(ray, triangleto[k]);
+				float f_distance = rayTriangleIntersection(&ray, &triangleto[k]);
 				if (f_distance != -INFINITY) {
 					int i_distance = int(f_distance * 70);
 					color[0] = i_distance*3;
@@ -185,6 +172,13 @@ int main()
 			}
 		}
 	}
+	auto end = std::chrono::high_resolution_clock::now();
+
+	// Calculate the duration
+	std::chrono::duration<double> duration = end - start;
+
+	// Output the duration
+	std::cout << "Time taken: " << duration.count() << " seconds";
 
 	// Display the image.
 	img.display("Simple Raytracer by Leon Lang");
