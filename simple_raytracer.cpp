@@ -119,8 +119,8 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> tr
 		if (f_distance != -INFINITY) {
 			if (f_distance < distance_comparison) {
 				distance_comparison = f_distance;
-				int i_distance = int(f_distance * 70);
-				glm::vec3 temp_color(i_distance * 3, i_distance * 3, i_distance * 3);
+				int i_distance = int(f_distance * 10);
+				glm::vec3 temp_color(i_distance * 4, i_distance *4, i_distance * 4);
 				color_point = temp_color;
 			}
 		}
@@ -131,15 +131,14 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> tr
 int main()
 {
 	// create a triangle
-	glm::vec3 triangleP1(600.0f, 100.0f, 3.0f);
-	glm::vec3 triangleP2(200.0f, 100.0f, 3.0f);
-	glm::vec3 triangleP3(300.0f, 1000.0f, 3.0f);
+	glm::vec3 triangleP1(200.0f, -100.0f, 100.0f);
+	glm::vec3 triangleP2(-200.0f, -100.0f, 100.0f);
+	glm::vec3 triangleP3(0.0f, -100.0f, -5000.0f);
 
 	Triangle triangle;
 	triangle.point_one = triangleP1;
 	triangle.point_two = triangleP2;
 	triangle.point_three = triangleP3;
-
 
 	// create a ray starting at z = -100 so you can see objects 
 	// which are centered at 0 0 0
@@ -163,8 +162,8 @@ int main()
 	unsigned char color[] = { 255,128,64 };
 	// go through each pixel in image and check if there is an intersection with triangle
 	
-	std::vector<Triangle> circle_triangles = triangleobjloader("sphere.obj");
-
+	std::vector<Triangle> circle_triangles = triangleobjloader("simple_sphere.obj");
+	circle_triangles.push_back(triangle);
 
 	std::vector<glm::vec2> image_points;
 	std::vector<glm::vec3> image_colors;
@@ -174,9 +173,6 @@ int main()
 		{
 			ray.direction.x = i;
 			ray.direction.y = j;
-			/*if (rayTriangleIntersection(ray, triangle) != -INFINITY) {
-				img.draw_point(i, j, color);
-			} */
 			std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, circle_triangles, i + image_width / 2, j + image_height / 2);
 			image_points.push_back(points.first);
 			image_colors.push_back(points.second);
@@ -187,7 +183,8 @@ int main()
 	for (int i = 0; i < image_points.size(); i++) {
 		color[0] = image_colors[i].x;
 		color[1] = image_colors[i].y;
-		color[2] = image_colors[i].z;
+		//color[2] = image_colors[i].z;
+		color[2] = 5;
 
 		img.draw_point(image_points[i].x, image_points[i].y, color);
 	}
