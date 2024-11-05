@@ -111,6 +111,23 @@ std::vector<Triangle> triangleobjloader(std::string objfilename){
 	return triangles;
 }
 
+std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> triangles, int point_x, int point_y){
+	float distance_comparison = INFINITY;
+	glm::vec3 color_point(0,0,0);
+	for (int k = 0; k < triangles.size(); k++) {
+		float f_distance = rayTriangleIntersection(&ray, &triangles[k]);
+		if (f_distance != -INFINITY) {
+			if (f_distance < distance_comparison) {
+				distance_comparison = f_distance;
+				int i_distance = int(f_distance * 70);
+				glm::vec3 temp_color(i_distance * 3, i_distance * 3, i_distance * 3);
+				color_point = temp_color;
+			}
+		}
+	}
+	glm::vec2 image_point(point_x, point_y);
+	return { image_point, color_point };
+}
 int main()
 {
 	// create a triangle
@@ -146,7 +163,7 @@ int main()
 	unsigned char color[] = { 255,128,64 };
 	// go through each pixel in image and check if there is an intersection with triangle
 	
-	std::vector<Triangle> circle_triangles = triangleobjloader("simple_sphere.obj");
+	std::vector<Triangle> circle_triangles = triangleobjloader("sphere.obj");
 
 
 	std::vector<glm::vec2> image_points;
@@ -157,29 +174,12 @@ int main()
 		{
 			ray.direction.x = i;
 			ray.direction.y = j;
-
 			/*if (rayTriangleIntersection(ray, triangle) != -INFINITY) {
 				img.draw_point(i, j, color);
 			} */
-			float distance_comparison = INFINITY;
-			glm::vec3 color_point;
-			for (int k = 0; k < circle_triangles.size(); k++) {
-				float f_distance = rayTriangleIntersection(&ray, &circle_triangles[k]);
-				if (f_distance != -INFINITY) {
-					if (f_distance < distance_comparison) {
-						distance_comparison = f_distance;
-						int i_distance = int(f_distance * 70);
-						glm::vec3 temp_color(i_distance * 3, i_distance * 3, i_distance * 3);
-						color_point = temp_color;
-					}
-				}
-			}
-			if (distance_comparison != INFINITY) {
-				glm::vec2 image_point(float(i + image_width / 2), float(j + image_height / 2));
-				image_points.push_back(image_point);
-				image_colors.push_back(color_point);
-			}
-
+			std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, circle_triangles, i + image_width / 2, j + image_height / 2);
+			image_points.push_back(points.first);
+			image_colors.push_back(points.second);
 		}
 	}
 	std::cout << "Size of image points" << image_points.size();
@@ -191,41 +191,5 @@ int main()
 
 		img.draw_point(image_points[i].x, image_points[i].y, color);
 	}
-	/*
-	// start timer to measure time
-	auto start = std::chrono::high_resolution_clock::now();
-	for (int i = -image_width/2; i < image_width/2; ++i)
-	{
-		for (int j = -image_height/2; j < image_height/2; ++j)
-		{
-			ray.direction.x = i;
-			ray.direction.y = j;
-			*/
-			/*if (rayTriangleIntersection(ray, triangle) != -INFINITY) {
-				img.draw_point(i, j, color);
-			} */
-			/*
-			for (int k = 0; k < circle_triangles.size(); k++){
-				float f_distance = rayTriangleIntersection(&ray, &circle_triangles[k]);
-				if (f_distance != -INFINITY) {
-					int i_distance = int(f_distance * 70);
-					color[0] = i_distance*3;
-					color[1] = i_distance*3;
-					color[2] = i_distance*3;
-					img.draw_point(i+image_width/2, j+image_height/2, color);
-					k = circle_triangles.size();
-				}
-			}
-		}
-	}
-	auto end = std::chrono::high_resolution_clock::now();
-
-	// Calculate the duration
-	std::chrono::duration<double> duration = end - start;
-
-	// Output the duration
-	std::cout << "Time taken: " << duration.count() << " seconds";
-	*/
-	// Display the image.
 	img.display("Simple Raytracer by Leon Lang");
 }
