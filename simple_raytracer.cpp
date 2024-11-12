@@ -230,6 +230,10 @@ int main()
 
 	// load circle triangles from obj
 	std::vector<Triangle> circle_triangles = triangleobjloader("sphere.obj");
+
+	// load cube triangles from obj
+	std::vector<Triangle> cube_triangles = triangleobjloader("cube.obj");
+	//circle_triangles.insert(circle_triangles.end(), cube_triangles.begin(), cube_triangles.end());
 	
 	// add triangle
 	//circle_triangles.push_back(triangle);
