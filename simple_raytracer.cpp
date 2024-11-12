@@ -10,7 +10,6 @@
 
 using namespace cimg_library;
 #define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
-// Optional. define TINYOBJLOADER_USE_MAPBOX_EARCUT gives robust trinagulation. Requires C++11
 #define TINYOBJLOADER_USE_MAPBOX_EARCUT
 #include "tiny_obj_loader.h"
 
@@ -29,84 +28,7 @@ struct Triangle {
 
 };
 
-glm::vec3 calculateTriangleNormal(const Triangle& triangle) {
-	glm::vec3 v1 = triangle.point_two - triangle.point_one;
-	glm::vec3 v2 = triangle.point_three - triangle.point_one;
-	glm::vec3 normal = glm::cross(v1, v2);
-	return glm::normalize(normal);
-}
-
-glm::vec3 interpolateNormal(const Triangle& triangle, const glm::vec3& barycentricCoords) {
-	return glm::normalize(
-		barycentricCoords.x * triangle.normal_one +
-		barycentricCoords.y * triangle.normal_two +
-		barycentricCoords.z * triangle.normal_three
-	);
-}
-glm::vec3 calculateBarycentricCoords(const Triangle& triangle, const glm::vec3& point) {
-	glm::vec3 v0 = triangle.point_two - triangle.point_one;
-	glm::vec3 v1 = triangle.point_three - triangle.point_one;
-	glm::vec3 v2 = point - triangle.point_one;
-	float d00 = glm::dot(v0, v0);
-	float d01 = glm::dot(v0, v1);
-	float d11 = glm::dot(v1, v1);
-	float d20 = glm::dot(v2, v0);
-	float d21 = glm::dot(v2, v1);
-	float denom = d00 * d11 - d01 * d01;
-	float v = (d11 * d20 - d01 * d21) / denom;
-	float w = (d00 * d21 - d01 * d20) / denom;
-	float u = 1.0f - v - w;
-	return glm::vec3(u, v, w);
-}
-
-// Intersection of a ray with a triangle
-// This implementation uses the Möller–Trumbore intersection algorithm
-inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
-	glm::vec3 p1p2 = triangle->point_two - triangle->point_one;
-	glm::vec3 p1p3 = triangle->point_three - triangle->point_one;
-	glm::vec3 pvec = glm::cross(ray->direction, p1p3);
-	float det = glm::dot(p1p2, pvec);
-
-	if (det < 0.000001f) return -INFINITY;
-
-	float invDet = 1.0f / det;
-	glm::vec3 tvec = ray->origin - triangle->point_one;
-	float u = glm::dot(tvec, pvec) * invDet;
-	if (u < 0.0f || u > 1.0f) return -INFINITY;
-
-	glm::vec3 qvec = glm::cross(tvec, p1p2);
-	float v = glm::dot(ray->direction, qvec) * invDet;
-	if (v < 0.0f || u + v > 1.0f) return -INFINITY;
-
-	return glm::dot(p1p3, qvec) * invDet;
-}
-
-// Phong illumination model
-glm::vec3 phongIllumination(const Triangle& triangle, const glm::vec3& lightPos, const glm::vec3& viewPos, const glm::vec3& lightColor, const glm::vec3& objectColor, float ambientStrength, float specularStrength, float shininess, const Ray ray, float distance) {
-
-	// calculate Diffuse Reflection
-	glm::vec3 intersectionPoint = ray.origin + distance * ray.direction;
-	glm::vec3 barycentricCoords = calculateBarycentricCoords(triangle, intersectionPoint);
-	glm::vec3 lightDir = glm::normalize(lightPos - intersectionPoint); // You can use any point on the triangle
-	glm::vec3 normal = interpolateNormal(triangle, barycentricCoords);
-	glm::vec3 diffuse = (1 / glm::pi<float>()) * objectColor * lightColor * glm::max(glm::dot(normal, lightDir), 0.00f);
-
-	// calculate Ambient Reflection
-	glm::vec3 ambient = (1 / glm::pi<float>()) * ambientStrength * lightColor * objectColor;
-	
-	// calculate Specular Reflection
-	// higher shininess means smaller specular radius
-	glm::vec3 viewDir = glm::normalize(-ray.direction);
-	glm::vec3 reflectDir = glm::reflect(-lightDir, normal);
-	float spec = glm::pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), shininess);
-	glm::vec3 specular = specularStrength * spec * lightColor;
-
-	// Together they are phong illumination
-	return diffuse + specular + ambient;
-}
-
-
-std::vector<Triangle> triangleobjloader(std::string objfilename){
+std::vector<Triangle> triangleobjloader(std::string objfilename) {
 	std::string inputfile = objfilename;
 	tinyobj::ObjReader reader;
 
@@ -126,6 +48,7 @@ std::vector<Triangle> triangleobjloader(std::string objfilename){
 
 	std::vector<Triangle> triangles;
 
+	// store triangles and normals
 	for (const auto& shape : shapes) {
 		for (const auto& index : shape.mesh.indices) {
 			glm::vec3 vertex(
@@ -152,7 +75,6 @@ std::vector<Triangle> triangleobjloader(std::string objfilename){
 				triangle.normal_two = normals[1];
 				triangle.normal_three = normals[2];
 				triangles.push_back(triangle);
-
 				vertices.clear();
 				normals.clear();
 			}
@@ -172,6 +94,77 @@ std::vector<Triangle> triangleobjloader(std::string objfilename){
 	return triangles;
 }
 
+inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
+	// Intersection of a ray with a triangle
+	// This implementation uses the Möller–Trumbore intersection algorithm
+
+	glm::vec3 p1p2 = triangle->point_two - triangle->point_one;
+	glm::vec3 p1p3 = triangle->point_three - triangle->point_one;
+	glm::vec3 pvec = glm::cross(ray->direction, p1p3);
+	float det = glm::dot(p1p2, pvec);
+
+	if (det < 0.000001f) return -INFINITY;
+
+	float invDet = 1.0f / det;
+	glm::vec3 tvec = ray->origin - triangle->point_one;
+	float u = glm::dot(tvec, pvec) * invDet;
+	if (u < 0.0f || u > 1.0f) return -INFINITY;
+
+	glm::vec3 qvec = glm::cross(tvec, p1p2);
+	float v = glm::dot(ray->direction, qvec) * invDet;
+	if (v < 0.0f || u + v > 1.0f) return -INFINITY;
+
+	return glm::dot(p1p3, qvec) * invDet;
+}
+
+glm::vec3 calculateBarycentricCoords(const Triangle& triangle, const glm::vec3& point) {
+	glm::vec3 v0 = triangle.point_two - triangle.point_one;
+	glm::vec3 v1 = triangle.point_three - triangle.point_one;
+	glm::vec3 v2 = point - triangle.point_one;
+	float d00 = glm::dot(v0, v0);
+	float d01 = glm::dot(v0, v1);
+	float d11 = glm::dot(v1, v1);
+	float d20 = glm::dot(v2, v0);
+	float d21 = glm::dot(v2, v1);
+	float denom = d00 * d11 - d01 * d01;
+	float v = (d11 * d20 - d01 * d21) / denom;
+	float w = (d00 * d21 - d01 * d20) / denom;
+	float u = 1.0f - v - w;
+	return glm::vec3(u, v, w);
+}
+
+glm::vec3 interpolateNormal(const Triangle& triangle, const glm::vec3& barycentricCoords) {
+	return glm::normalize(
+		barycentricCoords.x * triangle.normal_one +
+		barycentricCoords.y * triangle.normal_two +
+		barycentricCoords.z * triangle.normal_three
+	);
+}
+
+glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::vec3& lightPos, const glm::vec3& lightColor, const glm::vec3& objectColor, float ambientStrength, float specularStrength, float shininess, float distance) {
+	// Phong illumination model
+
+	// calculate Diffuse Reflection
+	glm::vec3 intersectionPoint = ray.origin + distance * ray.direction;
+	glm::vec3 barycentricCoords = calculateBarycentricCoords(triangle, intersectionPoint);
+	glm::vec3 lightDir = glm::normalize(lightPos - intersectionPoint); // You can use any point on the triangle
+	glm::vec3 normal = interpolateNormal(triangle, barycentricCoords);
+	glm::vec3 diffuse = (1 / glm::pi<float>()) * objectColor * lightColor * glm::max(glm::dot(normal, lightDir), 0.00f);
+
+	// calculate Ambient Reflection
+	glm::vec3 ambient = (1 / glm::pi<float>()) * ambientStrength * lightColor * objectColor;
+	
+	// calculate Specular Reflection
+	// higher shininess means smaller specular radius
+	glm::vec3 viewDir = glm::normalize(-ray.direction);
+	glm::vec3 reflectDir = glm::reflect(-lightDir, normal);
+	float spec = glm::pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), shininess);
+	glm::vec3 specular = specularStrength * spec * lightColor;
+
+	// Together they are Phong illumination
+	return diffuse + specular + ambient;
+}
+
 std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> triangles, int point_x, int point_y){
 	float distance_comparison = INFINITY;
 	glm::vec3 color_point(0,0,0);
@@ -180,8 +173,21 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> tr
 		if (f_distance != -INFINITY) {
 			if (f_distance < distance_comparison) {
 				distance_comparison = f_distance;
-				//std::cout << f_distance;
-				//std::cout << "This is the distance\n";
+
+				// Initialize Phong Illumination with a Red Object
+				glm::vec3 lightPos(300.0f, -300.0f, -1000.0f);
+				glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
+				glm::vec3 objectColor(1.0f, 0.0f, 0.0f); // Red object
+				float ambientStrength = 0.1f;
+				float specularStrength = 0.5f;
+				float shininess = 15.0f;
+				glm::vec3 color = phongIllumination(triangles[k], ray, lightPos, lightColor, objectColor, ambientStrength, specularStrength, shininess, f_distance);
+				color_point.x = int((color.x * 255));
+				color_point.y = int((color.y * 255));
+				color_point.z = int((color.z * 255));
+
+				/*
+				* Draw the Triangles based on the intersection distance
 				int i_distance = int(f_distance * 40);
 				glm::vec3 temp_color(i_distance * 8, i_distance *8, i_distance * 8);
 				glm::vec3 clampcolortest = glm::vec3(f_distance, f_distance, f_distance);
@@ -191,38 +197,21 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> tr
 				clampedColor.z = int((clampedColor.z * 255));
 				color_point = temp_color;
 				color_point = clampedColor;
-
-
-				glm::vec3 lightPos(300.0f, -300.0f, -1000.0f);
-				glm::vec3 viewPos(0.0f, 0.0f, -100.0f);
-				glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
-				glm::vec3 objectColor(0.5f, 0.0f, 0.0f); // Red object
-				float ambientStrength = 0.1f;
-				float specularStrength = 0.5f;
-				float shininess = 15.0f;
-
-				glm::vec3 color = phongIllumination(triangles[k], lightPos, viewPos, lightColor, objectColor, ambientStrength, specularStrength, shininess,ray,f_distance);
-				glm::vec3 clampedColor1 = glm::clamp(color, 0.0f, 1.0f);
-				// std::cout << "Color x:" << color.x << " y:" << color.y << " z:" << color.z << "\n";
-				clampedColor1.x = int((color.x * 255));
-				clampedColor1.y = int((color.y * 255));
-				clampedColor1.z = int((color.z * 255));
-				color_point = clampedColor1;
+				*/
 			}
 		}
 	}
 	glm::vec2 image_point(point_x, point_y);
 	return { image_point, color_point };
 }
+
 int main()
 {
-
 	// create a triangle
 	Triangle triangle;
 	triangle.point_one = glm::vec3(5.0f, 0.0f, 0.0f);
 	triangle.point_two = glm::vec3(-5.0f, 0.0f, 0.0f);
 	triangle.point_three = glm::vec3(0.0f, 8.0f, 0.0f);
-
 
 	// create a ray starting at z = -100 so you can see objects 
 	// which are centered at 0 0 0
@@ -230,21 +219,22 @@ int main()
 	ray.direction = glm::vec3(0.0f, 0.0f,4000.0f);
 	ray.origin = glm::vec3 (0.0f, 0.0f, -100.0f);
 
-
-
 	// create image
 	int image_width = 300;
 	int image_height = 250;
 	CImg<unsigned char> img(image_width, image_height, 1, 3);
-	// Set pixel values to 0 (color : black)
 	img.fill(0);
-	// define color for rays
+
+	// define default color for rays
 	unsigned char color[] = { 255,128,64 };
-	// go through each pixel in image and check if there is an intersection with triangle
-	
+
+	// load circle triangles from obj
 	std::vector<Triangle> circle_triangles = triangleobjloader("sphere.obj");
+	
+	// add triangle
 	//circle_triangles.push_back(triangle);
 
+	// send rays out based from the center of the ray origin and intersect them with triangles
 	std::vector<glm::vec2> image_points;
 	std::vector<glm::vec3> image_colors;
 	for (int i = -image_width / 2; i < image_width / 2; ++i)
@@ -258,20 +248,13 @@ int main()
 			image_colors.push_back(points.second);
 		}
 	}
-	// std::cout << "Size of image points" << image_points.size();
-	// draw pixels found in circle
+
+	// draw pixels found in ray intersection
 	for (int i = 0; i < image_points.size(); i++) {
 		color[0] = image_colors[i].x;
 		color[1] = image_colors[i].y;
-		//color[2] = image_colors[i].z;
 		color[2] = image_colors[i].z;;
-		/*if (color[0] == 0 && color[1] == 0 && color[2] == 0) {
-			color[0] = 100;
-			color[1] = 100;
-			color[2] = 100;
-		} */
 		img.draw_point(image_points[i].x, image_points[i].y, color);
-
 	}
 	img.display("Simple Raytracer by Leon Lang");
 }
