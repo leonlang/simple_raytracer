@@ -59,8 +59,6 @@ glm::vec3 calculateBarycentricCoords(const Triangle& triangle, const glm::vec3& 
 	return glm::vec3(u, v, w);
 }
 
-
-
 // Intersection of a ray with a triangle
 // This implementation uses the Möller–Trumbore intersection algorithm
 inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
@@ -86,35 +84,25 @@ inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
 // Phong illumination model
 glm::vec3 phongIllumination(const Triangle& triangle, const glm::vec3& lightPos, const glm::vec3& viewPos, const glm::vec3& lightColor, const glm::vec3& objectColor, float ambientStrength, float specularStrength, float shininess, const Ray ray, float distance) {
 
-	
-
-	
-	glm::vec3 ambient = ambientStrength * lightColor;
+	// calculate Diffuse Reflection
 	glm::vec3 intersectionPoint = ray.origin + distance * ray.direction;
 	glm::vec3 barycentricCoords = calculateBarycentricCoords(triangle, intersectionPoint);
-
 	glm::vec3 lightDir = glm::normalize(lightPos - intersectionPoint); // You can use any point on the triangle
-	// glm::vec3 lightDir = glm::normalize(lightPos); // You can use any point on the triangle
-	// glm::vec3 lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -2.0f));
-	// glm::vec3 normal = interpolateNormal(triangle, barycentricCoords);
 	glm::vec3 normal = interpolateNormal(triangle, barycentricCoords);
+	glm::vec3 diffuse = (1 / glm::pi<float>()) * objectColor * lightColor * glm::max(glm::dot(normal, lightDir), 0.00f);
 
-	// glm::vec3 normal = calculateTriangleNormal(triangle);
-	float diff = glm::max(glm::dot(normal, lightDir), 0.0f);
-	glm::vec3 diffuse = diff * lightColor;
-
-	glm::vec3 viewDir = glm::normalize(viewPos - triangle.point_one); // You can use any point on the triangle
+	// calculate Ambient Reflection
+	glm::vec3 ambient = (1 / glm::pi<float>()) * ambientStrength * lightColor * objectColor;
+	
+	// calculate Specular Reflection
+	// higher shininess means smaller specular radius
+	glm::vec3 viewDir = glm::normalize(-ray.direction);
 	glm::vec3 reflectDir = glm::reflect(-lightDir, normal);
 	float spec = glm::pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), shininess);
 	glm::vec3 specular = specularStrength * spec * lightColor;
-	glm::vec3 result = ambient * objectColor;
-	//glm::vec3 result = (ambient * objectColor + diffuse * objectColor + specular * objectColor);
-	//glm::vec3 diffuseCross = glm::dot(objectColor,lightColor);
-	//std::cout << diffuseCross.y << "Hi\n";
-	glm::vec3 diffuseTest = (1 / glm::pi<float>()) * objectColor * lightColor * glm::max(glm::dot(normal, lightDir), 0.00f);
-	//diffuseTest = glm::dot(diffuseTest, glm::dot(normal, lightDir));
-	 return diffuseTest;
-	return result;
+
+	// Together they are phong illumination
+	return diffuse + specular + ambient;
 }
 
 
@@ -127,10 +115,10 @@ std::vector<Triangle> triangleobjloader(std::string objfilename){
 			std::cerr << "TinyObjReader: " << reader.Error();
 		}
 	}
-
+	/*
 	if (!reader.Warning().empty()) {
 		std::cout << "TinyObjReader: " << reader.Warning();
-	}
+	} */
 
 	auto& attrib = reader.GetAttrib();
 	auto& shapes = reader.GetShapes();
@@ -163,13 +151,6 @@ std::vector<Triangle> triangleobjloader(std::string objfilename){
 				triangle.normal_one = normals[0];
 				triangle.normal_two = normals[1];
 				triangle.normal_three = normals[2];
-				//triangle.point_one *= 25.0f;
-				//triangle.point_two *= 25.0f;
-				//triangle.point_three *= 25.0f;
-				//triangle.point_two.z += 2.6;
-				//triangle.point_one.z += 2.6;
-				//triangle.point_three.z += 2.6;
-
 				triangles.push_back(triangle);
 
 				vertices.clear();
@@ -179,6 +160,7 @@ std::vector<Triangle> triangleobjloader(std::string objfilename){
 	}
 
 	// Output the triangles
+	/*
 	for (const auto& triangle : triangles) {
 		std::cout << "Triangle: \n";
 		std::cout << "  Point One: (" << triangle.point_one.x << ", " << triangle.point_one.y << ", " << triangle.point_one.z << ")\n";
@@ -186,7 +168,7 @@ std::vector<Triangle> triangleobjloader(std::string objfilename){
 		std::cout << "  Point Three: (" << triangle.point_three.x << ", " << triangle.point_three.y << ", " << triangle.point_three.z << ")\n";
 	}
 	std::cout << "Size:\n";
-	std::cout << triangles.size();
+	std::cout << triangles.size(); */
 	return triangles;
 }
 
@@ -212,12 +194,12 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> tr
 
 
 				glm::vec3 lightPos(300.0f, -300.0f, -1000.0f);
-				glm::vec3 viewPos(0.0f, 0.0f, 1.0f);
+				glm::vec3 viewPos(0.0f, 0.0f, -100.0f);
 				glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
 				glm::vec3 objectColor(0.5f, 0.0f, 0.0f); // Red object
 				float ambientStrength = 0.1f;
 				float specularStrength = 0.5f;
-				float shininess = 32.0f;
+				float shininess = 15.0f;
 
 				glm::vec3 color = phongIllumination(triangles[k], lightPos, viewPos, lightColor, objectColor, ambientStrength, specularStrength, shininess,ray,f_distance);
 				glm::vec3 clampedColor1 = glm::clamp(color, 0.0f, 1.0f);
@@ -236,23 +218,18 @@ int main()
 {
 
 	// create a triangle
-	glm::vec3 triangleP1(5.0f, 2.0f, 6.0f);
-	glm::vec3 triangleP2(-5.0f, 2.0f, 6.0f);
-	glm::vec3 triangleP3(0.0f, 1.9f, -5.0f);
-
 	Triangle triangle;
-	triangle.point_one = triangleP1;
-	triangle.point_two = triangleP2;
-	triangle.point_three = triangleP3;
+	triangle.point_one = glm::vec3(5.0f, 0.0f, 0.0f);
+	triangle.point_two = glm::vec3(-5.0f, 0.0f, 0.0f);
+	triangle.point_three = glm::vec3(0.0f, 8.0f, 0.0f);
+
 
 	// create a ray starting at z = -100 so you can see objects 
 	// which are centered at 0 0 0
-	glm::vec3 vecOrig(0.0f, 0.0f, -100.0f);
-	glm::vec3 vecDir(2.0f, 2.0f, 4000.0f);
-
 	Ray ray;
-	ray.direction = vecDir;
-	ray.origin = vecOrig;
+	ray.direction = glm::vec3(0.0f, 0.0f,4000.0f);
+	ray.origin = glm::vec3 (0.0f, 0.0f, -100.0f);
+
 
 
 	// create image
@@ -266,7 +243,7 @@ int main()
 	// go through each pixel in image and check if there is an intersection with triangle
 	
 	std::vector<Triangle> circle_triangles = triangleobjloader("sphere.obj");
-	circle_triangles.push_back(triangle);
+	//circle_triangles.push_back(triangle);
 
 	std::vector<glm::vec2> image_points;
 	std::vector<glm::vec3> image_colors;
@@ -281,7 +258,7 @@ int main()
 			image_colors.push_back(points.second);
 		}
 	}
-	std::cout << "Size of image points" << image_points.size();
+	// std::cout << "Size of image points" << image_points.size();
 	// draw pixels found in circle
 	for (int i = 0; i < image_points.size(); i++) {
 		color[0] = image_colors[i].x;
