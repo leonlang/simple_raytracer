@@ -118,22 +118,43 @@ inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
 }
 
 glm::vec3 calculateBarycentricCoords(const Triangle& triangle, const glm::vec3& point) {
+	// Calculate the vectors from point_one to the other two vertices of the triangle
+	// These vectors represent the edges of the triangle and the vector from the
+	// first vertex to the point of interest. They are used for determining the relative
+	// position of the point within the triangle.
 	glm::vec3 v0 = triangle.point_two - triangle.point_one;
 	glm::vec3 v1 = triangle.point_three - triangle.point_one;
 	glm::vec3 v2 = point - triangle.point_one;
-	float d00 = glm::dot(v0, v0);
-	float d01 = glm::dot(v0, v1);
+
+	// The dot products are used to calculate the areas and angles between the vectors.
+	// These values are crucial for the barycentric coordinates formula, which determines
+	// how much of each vertex's influence is present at the point.
+	float d00 = glm::dot(v0, v0); 
+	float d01 = glm::dot(v0, v1); 
 	float d11 = glm::dot(v1, v1);
 	float d20 = glm::dot(v2, v0);
 	float d21 = glm::dot(v2, v1);
+
+	// Compute the denominator of the barycentric coordinates formula
+	// It normalizes the coordinates, ensuring they sum to 1. 
+	// This step ensures that the point lies within the triangle
 	float denom = d00 * d11 - d01 * d01;
+
+	// Compute the barycentric coordinates (v, w, u)
+	// v and w are calculated using the dot products and the denominator
 	float v = (d11 * d20 - d01 * d21) / denom;
 	float w = (d00 * d21 - d01 * d20) / denom;
+	// u is calculated to ensure the sum of the barycentric coordinates is 1
 	float u = 1.0f - v - w;
+
+	// Return the barycentric coordinates as a vec3
 	return glm::vec3(u, v, w);
 }
 
+
 glm::vec3 interpolateNormal(const Triangle& triangle, const glm::vec3& barycentricCoords) {
+	// By multiplying each vertex normal by its corresponding barycentric coordinate, 
+	// I am weighting each normal by how much influence that vertex has at the point of interest.
 	return glm::normalize(
 		barycentricCoords.x * triangle.normal_one +
 		barycentricCoords.y * triangle.normal_two +
@@ -141,29 +162,60 @@ glm::vec3 interpolateNormal(const Triangle& triangle, const glm::vec3& barycentr
 	);
 }
 
-glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::vec3& lightPos, const glm::vec3& lightColor, const glm::vec3& objectColor, float ambientStrength, float specularStrength, float shininess, float distance) {
+glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::vec3& lightPos, const glm::vec3& Llight, const glm::vec3& p, float ambientStrength, float s, float m, float distance) {
 	// Phong illumination model
 
-	// calculate Diffuse Reflection
+	// p = object color
+	// Llight = Light Color
+	// m = specular radius
+	// s = specular Strength
+
+	// rView is a constant factor for the reflection model, representing the light reflected to the view position
+	// smaller number = less light reflected to view position = diffuse plays a smaller role
+	constexpr float rView = 1.0f / glm::pi<float>();
+
+	// Calculate the intersection point of the ray with the triangle
 	glm::vec3 intersectionPoint = ray.origin + distance * ray.direction;
+
+	// Calculate barycentric coordinates for the intersection point within the triangle
 	glm::vec3 barycentricCoords = calculateBarycentricCoords(triangle, intersectionPoint);
-	glm::vec3 lightDir = glm::normalize(lightPos - intersectionPoint); // You can use any point on the triangle
-	glm::vec3 normal = interpolateNormal(triangle, barycentricCoords);
-	glm::vec3 diffuse = (1 / glm::pi<float>()) * objectColor * lightColor * glm::max(glm::dot(normal, lightDir), 0.00f);
 
-	// calculate Ambient Reflection
-	glm::vec3 ambient = (1 / glm::pi<float>()) * ambientStrength * lightColor * objectColor;
-	
-	// calculate Specular Reflection
-	// higher shininess means smaller specular radius
-	glm::vec3 viewDir = glm::normalize(-ray.direction);
-	glm::vec3 reflectDir = glm::reflect(-lightDir, normal);
-	float spec = glm::pow(glm::max(glm::dot(viewDir, reflectDir), 0.0f), shininess);
-	glm::vec3 specular = specularStrength * spec * lightColor;
+	// Interpolate the normal at the intersection point using barycentric coordinates
+	glm::vec3 n = interpolateNormal(triangle, barycentricCoords); // normal
 
-	// Together they are Phong illumination
+	// Calculate the direction vector from the intersection point to the light source
+	glm::vec3 l = glm::normalize(lightPos - intersectionPoint); // lightDirection
+
+	// Calculate Diffuse Reflection
+	// Diffuse reflection is based on Lambert's cosine law, which states that the intensity of light is proportional to the 
+	// cosine of the angle between the light direction and the surface normal
+	// Means: intensity of light is is higher if the angle is sharper
+	// The dot product n * l represents this cosine value, and I use max to ensure it is non-negative
+	// p * Llight represents the final color of object with light 
+	glm::vec3 diffuse = rView * p * Llight * glm::max(glm::dot(n, l), 0.00f);
+
+	// Calculate Ambient Reflection
+	// Ambient reflection represents the constant illumination of the object by the environment
+	// It is usually a small constant value added to ensure that objects are visible even when not directly lit
+	// Higher AmbientStrenght = All of the Object brightens up more by the same amount
+	glm::vec3 ambient = (1 / glm::pi<float>()) * ambientStrength * p * Llight;
+
+	// Calculate Specular Reflection
+	// Specular reflection represents the mirror-like reflection of light sources on shiny surfaces
+	// It does not use the object color (p) because specular highlights are typically the color of the light source
+	// Higher shininess (m) means a smaller specular highlight
+	glm::vec3 v = glm::normalize(-ray.direction); // View Direction
+	glm::vec3 r = glm::reflect(-l, n); // Reflect Direction
+
+	// The specular term is calculated using the Phong reflection model
+	// It is based on the dot product between the view direction and the reflection direction, raised to the power of the shininess factor (m)
+	// s = specular strength. Smaller specular strength means less intensity
+	glm::vec3 specular = Llight * s * glm::max(glm::dot(n, l), 0.00f) * glm::pow(glm::max(glm::dot(r, v), 0.0f), m);
+
+	// Combine the three components (diffuse, specular, and ambient) to get the final color
 	return diffuse + specular + ambient;
 }
+
 
 std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> triangles, int point_x, int point_y){
 	float distance_comparison = INFINITY;
@@ -178,10 +230,11 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> tr
 				glm::vec3 lightPos(300.0f, -300.0f, -1000.0f);
 				glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
 				glm::vec3 objectColor(1.0f, 0.0f, 0.0f); // Red object
-				float ambientStrength = 0.1f;
+				float ambientStrength = 0.2f;
 				float specularStrength = 0.5f;
 				float shininess = 15.0f;
 				glm::vec3 color = phongIllumination(triangles[k], ray, lightPos, lightColor, objectColor, ambientStrength, specularStrength, shininess, f_distance);
+				color = glm::clamp(color, 0.0f, 1.0f);
 				color_point.x = int((color.x * 255));
 				color_point.y = int((color.y * 255));
 				color_point.z = int((color.z * 255));
