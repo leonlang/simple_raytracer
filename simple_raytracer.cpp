@@ -389,18 +389,21 @@ int main()
 
 	// load circle triangles from obj
 	std::vector<Triangle> circle_triangles = triangleobjloader("sphere.obj");
-	circle_triangles = scaleObj(circle_triangles, 8.0f, 5.0f, 5.0f);
-	circle_triangles = changeObjPosition(circle_triangles, glm::vec3(0.0f, -4.0f, 0.0f));
+	circle_triangles = scaleObj(circle_triangles, 5.0f, 5.0f, 5.0f);
+	circle_triangles = changeObjPosition(circle_triangles, glm::vec3(20.0f, -15.0f, 0.0f));
+	// circle_triangles = mirrorObj(circle_triangles, true, false, false);
 	// load cube triangles from obj
 	std::vector<Triangle> cube_triangles = triangleobjloader("cube.obj");
-	cube_triangles = scaleObj(cube_triangles, 15.0f, 15.0f, 15.0f);
-	// cube_triangles = rotateObjX(cube_triangles, 45.0f);
-	cube_triangles = rotateObjY(cube_triangles, 45.0f);
+	cube_triangles = scaleObj(cube_triangles, 10.0f, 10.0f, 10.0f);
+	cube_triangles = rotateObjX(cube_triangles, 45.0f);
+	cube_triangles = changeObjPosition(cube_triangles, glm::vec3(-20.0f, 10.0f, 0.0f));
+	// cube_triangles = rotateObjY(cube_triangles, 45.0f);
+	// cube_triangles = shearObj(cube_triangles, 0.0f, 0.0f, 0.1f);
 	// cube_triangles = mirrorObj(cube_triangles, false, true, false);
 
 	// cube_triangles = rotateObjZ(cube_triangles, 45.0f);
 
-	//circle_triangles.insert(circle_triangles.end(), cube_triangles.begin(), cube_triangles.end());
+	circle_triangles.insert(circle_triangles.end(), cube_triangles.begin(), cube_triangles.end());
 	
 	// add triangle
 	//circle_triangles.push_back(triangle);
@@ -414,7 +417,7 @@ int main()
 		{
 			ray.direction.x = i;
 			ray.direction.y = j;
-			std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, cube_triangles, i + image_width / 2, j + image_height / 2);
+			std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, circle_triangles, i + image_width / 2, j + image_height / 2);
 			image_points.push_back(points.first);
 			image_colors.push_back(points.second);
 		}
