@@ -19,9 +19,9 @@ struct Ray {
 };
 
 struct Triangle {
-	glm::vec3 point_one;
-	glm::vec3 point_two;
-	glm::vec3 point_three;
+	glm::vec4 point_one;
+	glm::vec4 point_two;
+	glm::vec4 point_three;
 	glm::vec3 normal_one;  // Normal at point_one
 	glm::vec3 normal_two;  // Normal at point_two
 	glm::vec3 normal_three; // Normal at point_three
@@ -68,9 +68,10 @@ std::vector<Triangle> triangleobjloader(std::string objfilename) {
 			normals.push_back(normal);
 			if (vertices.size() == 3) {
 				Triangle triangle;
-				triangle.point_one = vertices[0];
-				triangle.point_two = vertices[1];
-				triangle.point_three = vertices[2];
+				// Convert them to triange Points and add 1 for homogenious notation
+				triangle.point_one = glm::vec4 (vertices[0],1);
+				triangle.point_two = glm::vec4(vertices[1],1);
+				triangle.point_three = glm::vec4(vertices[2],1);
 				triangle.normal_one = normals[0];
 				triangle.normal_two = normals[1];
 				triangle.normal_three = normals[2];
@@ -93,20 +94,41 @@ std::vector<Triangle> triangleobjloader(std::string objfilename) {
 	std::cout << triangles.size(); */
 	return triangles;
 }
-
+std::vector<Triangle> triangle_matrix_mutliplication(std::vector<Triangle> triangles, glm::mat4 matrix) {
+	std::vector<Triangle> t_multi;
+	for (int k = 0; k < triangles.size(); k++) {
+		Triangle t = triangles[k];
+		t.point_one = matrix * triangles[k].point_one;
+		t.point_two = matrix * triangles[k].point_two;
+		t.point_three = matrix * triangles[k].point_three;
+	}
+	return t_multi;
+}
+std::vector<Triangle> scaleObj(std::vector<Triangle> triangles, float sx,float sy,float sz) {
+	glm::mat4 matrix = glm::mat4(0.0f); // Set the values of the matrix later 
+	matrix[0][0] = sx; 
+	matrix[1][1] = sy; 
+	matrix[2][2] = sz;
+	matrix[3][3] = 1.0f;
+}
 inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
 	// Intersection of a ray with a triangle
 	// This implementation uses the Möller–Trumbore intersection algorithm
 
-	glm::vec3 p1p2 = triangle->point_two - triangle->point_one;
-	glm::vec3 p1p3 = triangle->point_three - triangle->point_one;
+	// Triangle Point1 in Cartesian Form
+	glm::vec3 tP1Cartesian = glm::vec3(triangle->point_one) / triangle->point_one.w;
+	glm::vec3 tP2Cartesian = glm::vec3(triangle->point_two) / triangle->point_two.w;
+	glm::vec3 tP3Cartesian = glm::vec3(triangle->point_three) / triangle->point_three.w;
+
+	glm::vec3 p1p2 = tP2Cartesian - tP1Cartesian;
+	glm::vec3 p1p3 = tP3Cartesian - tP1Cartesian;
 	glm::vec3 pvec = glm::cross(ray->direction, p1p3);
 	float det = glm::dot(p1p2, pvec);
 
 	if (det < 0.000001f) return -INFINITY;
 
 	float invDet = 1.0f / det;
-	glm::vec3 tvec = ray->origin - triangle->point_one;
+	glm::vec3 tvec = ray->origin - tP1Cartesian;
 	float u = glm::dot(tvec, pvec) * invDet;
 	if (u < 0.0f || u > 1.0f) return -INFINITY;
 
@@ -122,9 +144,14 @@ glm::vec3 calculateBarycentricCoords(const Triangle& triangle, const glm::vec3& 
 	// These vectors represent the edges of the triangle and the vector from the
 	// first vertex to the point of interest. They are used for determining the relative
 	// position of the point within the triangle.
-	glm::vec3 v0 = triangle.point_two - triangle.point_one;
-	glm::vec3 v1 = triangle.point_three - triangle.point_one;
-	glm::vec3 v2 = point - triangle.point_one;
+	glm::vec3 tP1Cartesian = glm::vec3(triangle.point_one) / triangle.point_one.w;
+	glm::vec3 tP2Cartesian = glm::vec3(triangle.point_two) / triangle.point_two.w;
+	glm::vec3 tP3Cartesian = glm::vec3(triangle.point_three) / triangle.point_three.w;
+
+
+	glm::vec3 v0 = tP2Cartesian - tP1Cartesian;
+	glm::vec3 v1 = tP3Cartesian - tP1Cartesian;
+	glm::vec3 v2 = point - tP1Cartesian;
 
 	// The dot products are used to calculate the areas and angles between the vectors.
 	// These values are crucial for the barycentric coordinates formula, which determines
@@ -262,9 +289,9 @@ int main()
 {
 	// create a triangle
 	Triangle triangle;
-	triangle.point_one = glm::vec3(5.0f, 0.0f, 0.0f);
-	triangle.point_two = glm::vec3(-5.0f, 0.0f, 0.0f);
-	triangle.point_three = glm::vec3(0.0f, 8.0f, 0.0f);
+	triangle.point_one = glm::vec4(5.0f, 0.0f, 0.0f,1.0f);
+	triangle.point_two = glm::vec4(-5.0f, 0.0f, 0.0f,1.0f);
+	triangle.point_three = glm::vec4(0.0f, 8.0f, 0.0f,1.0f);
 
 	// create a ray starting at z = -100 so you can see objects 
 	// which are centered at 0 0 0
