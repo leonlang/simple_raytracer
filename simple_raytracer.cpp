@@ -331,8 +331,8 @@ int main()
 
 	// load circle triangles from obj
 	std::vector<Triangle> circle_triangles = triangleobjloader("sphere.obj");
-	circle_triangles = scaleObj(circle_triangles, 5.0f, 5.0f, 5.0f);
-	// circle_triangles = changeObjPosition(circle_triangles, glm::vec4(10.0f, 1.0f, 1.0f, 0.0f));
+	circle_triangles = scaleObj(circle_triangles, 8.0f, 5.0f, 5.0f);
+	circle_triangles = changeObjPosition(circle_triangles, glm::vec4(0.0f, -4.0f, 0.0f, 0.0f));
 	// load cube triangles from obj
 	std::vector<Triangle> cube_triangles = triangleobjloader("cube.obj");
 	//circle_triangles.insert(circle_triangles.end(), cube_triangles.begin(), cube_triangles.end());
@@ -362,5 +362,7 @@ int main()
 		color[2] = image_colors[i].z;
 		img.draw_point(image_points[i].x, image_points[i].y, color);
 	}
-	img.display("Simple Raytracer by Leon Lang");
+	img.save_bmp("output.bmp");
+	return 0;
+	// img.display("Simple Raytracer by Leon Lang");
 }
