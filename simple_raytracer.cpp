@@ -114,16 +114,74 @@ std::vector<Triangle> scaleObj(std::vector<Triangle> triangles, float sx,float s
 	return triangle_matrix_mutliplication(triangles, matrix);
 }
 
-std::vector<Triangle> changeObjPosition(std::vector<Triangle> triangles, glm::vec4 position) {
-	std::vector<Triangle> t_pos;
-	for (int k = 0; k < triangles.size(); k++) {
-		Triangle t = triangles[k];
-		t.point_one = position + triangles[k].point_one;
-		t.point_two = position + triangles[k].point_two;
-		t.point_three = position + triangles[k].point_three;
-		t_pos.push_back(t);
+std::vector<Triangle> rotateObjX(std::vector<Triangle> triangles, float degree ) {
+	glm::mat4 matrix = glm::mat4(0.0f); // Set the values of the matrix later 
+	matrix[0][0] = 1;
+	matrix[1][1] = std::cos(degree);
+	matrix[1][2] = -std::sin(degree);
+	matrix[2][1] = std::sin(degree);
+	matrix[2][2] = std::cos(degree);
+	matrix[3][3] = 1.0f;
+	return triangle_matrix_mutliplication(triangles, matrix);
+}
+
+std::vector<Triangle> rotateObjY(std::vector<Triangle> triangles, float degree) {
+	glm::mat4 matrix = glm::mat4(0.0f); // Set the values of the matrix later
+	matrix[0][0] = std::cos(degree);
+	matrix[0][2] = std::sin(degree);
+	matrix[1][1] = 1.0f;
+	matrix[2][0] = -std::sin(degree);
+	matrix[2][2] = std::cos(degree);
+	matrix[3][3] = 1.0f;
+	return triangle_matrix_mutliplication(triangles, matrix);
+}
+
+std::vector<Triangle> rotateObjZ(std::vector<Triangle> triangles, float degree) {
+	glm::mat4 matrix = glm::mat4(0.0f); // Set the values of the matrix later
+	matrix[0][0] = std::cos(degree);
+	matrix[0][1] = -std::sin(degree);
+	matrix[1][0] = std::sin(degree);
+	matrix[1][1] = std::cos(degree);
+	matrix[2][2] = 1.0f;
+	matrix[3][3] = 1.0f;
+	return triangle_matrix_mutliplication(triangles, matrix);
+}
+
+std::vector<Triangle> mirrorObj(std::vector<Triangle> triangles, bool mirrorX = false, bool mirrorY = false, bool mirrorZ = false) {
+	glm::mat4 matrix = glm::mat4(1.0f); // Identity matrix
+
+	// Apply mirroring transformations
+	if (mirrorX) {
+		matrix[0][0] = -1.0f; // Mirror along the X-axis
 	}
-	return t_pos;
+	if (mirrorY) {
+		matrix[1][1] = -1.0f; // Mirror along the Y-axis
+	}
+	if (mirrorZ) {
+		matrix[2][2] = -1.0f; // Mirror along the Z-axis
+	}
+
+	return triangle_matrix_mutliplication(triangles, matrix);
+}
+
+std::vector<Triangle> shearObj(std::vector<Triangle> triangles, float shearXY = 0.0f, float shearXZ = 0.0f, float shearYX = 0.0f, float shearYZ = 0.0f, float shearZX = 0.0f, float shearZY = 0.0f) {
+	glm::mat4 matrix = glm::mat4(1.0f); // Identity matrix
+
+	// Apply shearing transformations
+	matrix[1][0] = shearXY; // Shear along the Y-axis in the X direction
+	matrix[2][0] = shearXZ; // Shear along the Z-axis in the X direction
+	matrix[0][1] = shearYX; // Shear along the X-axis in the Y direction
+	matrix[2][1] = shearYZ; // Shear along the Z-axis in the Y direction
+	matrix[0][2] = shearZX; // Shear along the X-axis in the Z direction
+	matrix[1][2] = shearZY; // Shear along the Y-axis in the Z direction
+
+	return triangle_matrix_mutliplication(triangles, matrix);
+}
+
+std::vector<Triangle> changeObjPosition(std::vector<Triangle> triangles, glm::vec3 position) {
+	glm::mat4 translationMatrix = glm::mat4(1.0f); // Identity matrix
+	translationMatrix[3] = glm::vec4(position,1.0f);
+	return triangle_matrix_mutliplication(triangles, translationMatrix);
 }
 
 inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
@@ -332,9 +390,16 @@ int main()
 	// load circle triangles from obj
 	std::vector<Triangle> circle_triangles = triangleobjloader("sphere.obj");
 	circle_triangles = scaleObj(circle_triangles, 8.0f, 5.0f, 5.0f);
-	circle_triangles = changeObjPosition(circle_triangles, glm::vec4(0.0f, -4.0f, 0.0f, 0.0f));
+	circle_triangles = changeObjPosition(circle_triangles, glm::vec3(0.0f, -4.0f, 0.0f));
 	// load cube triangles from obj
 	std::vector<Triangle> cube_triangles = triangleobjloader("cube.obj");
+	cube_triangles = scaleObj(cube_triangles, 15.0f, 15.0f, 15.0f);
+	// cube_triangles = rotateObjX(cube_triangles, 45.0f);
+	cube_triangles = rotateObjY(cube_triangles, 45.0f);
+	// cube_triangles = mirrorObj(cube_triangles, false, true, false);
+
+	// cube_triangles = rotateObjZ(cube_triangles, 45.0f);
+
 	//circle_triangles.insert(circle_triangles.end(), cube_triangles.begin(), cube_triangles.end());
 	
 	// add triangle
@@ -349,7 +414,7 @@ int main()
 		{
 			ray.direction.x = i;
 			ray.direction.y = j;
-			std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, circle_triangles, i + image_width / 2, j + image_height / 2);
+			std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, cube_triangles, i + image_width / 2, j + image_height / 2);
 			image_points.push_back(points.first);
 			image_colors.push_back(points.second);
 		}
@@ -362,7 +427,21 @@ int main()
 		color[2] = image_colors[i].z;
 		img.draw_point(image_points[i].x, image_points[i].y, color);
 	}
+
+	unsigned char light_blue[] = { 173, 216, 230 }; // RGB values for light blue
+
+		// Iterate through all the pixels
+	cimg_forXY(img, x, y) {
+			// Check if the pixel is black (all channels are 0)
+			if (img(x, y, 0, 0) == 0 && img(x, y, 0, 1) == 0 && img(x, y, 0, 2) == 0) {
+				// Change the pixel to light blue
+				img(x, y, 0, 0) = light_blue[0]; // Red channel
+				img(x, y, 0, 1) = light_blue[1]; // Green channel
+				img(x, y, 0, 2) = light_blue[2]; // Blue channel
+			}
+		}
+
+
 	img.save_bmp("output.bmp");
-	return 0;
-	// img.display("Simple Raytracer by Leon Lang");
+	img.display("Simple Raytracer by Leon Lang");
 }
