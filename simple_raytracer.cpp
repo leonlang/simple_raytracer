@@ -101,6 +101,7 @@ std::vector<Triangle> triangle_matrix_mutliplication(std::vector<Triangle> trian
 		t.point_one = matrix * triangles[k].point_one;
 		t.point_two = matrix * triangles[k].point_two;
 		t.point_three = matrix * triangles[k].point_three;
+		t_multi.push_back(t);
 	}
 	return t_multi;
 }
@@ -110,7 +111,21 @@ std::vector<Triangle> scaleObj(std::vector<Triangle> triangles, float sx,float s
 	matrix[1][1] = sy; 
 	matrix[2][2] = sz;
 	matrix[3][3] = 1.0f;
+	return triangle_matrix_mutliplication(triangles, matrix);
 }
+
+std::vector<Triangle> changeObjPosition(std::vector<Triangle> triangles, glm::vec4 position) {
+	std::vector<Triangle> t_pos;
+	for (int k = 0; k < triangles.size(); k++) {
+		Triangle t = triangles[k];
+		t.point_one = position + triangles[k].point_one;
+		t.point_two = position + triangles[k].point_two;
+		t.point_three = position + triangles[k].point_three;
+		t_pos.push_back(t);
+	}
+	return t_pos;
+}
+
 inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
 	// Intersection of a ray with a triangle
 	// This implementation uses the Möller–Trumbore intersection algorithm
@@ -296,21 +311,28 @@ int main()
 	// create a ray starting at z = -100 so you can see objects 
 	// which are centered at 0 0 0
 	Ray ray;
-	ray.direction = glm::vec3(0.0f, 0.0f,4000.0f);
+	ray.direction = glm::vec3(0.0f, 0.0f,400.0f);
 	ray.origin = glm::vec3 (0.0f, 0.0f, -100.0f);
+
+
+	// define default color for rays
+	unsigned char color[] = { 255,128,64 };
 
 	// create image
 	int image_width = 300;
 	int image_height = 250;
 	CImg<unsigned char> img(image_width, image_height, 1, 3);
 	img.fill(0);
-
-	// define default color for rays
-	unsigned char color[] = { 255,128,64 };
+	for (int i = 0; i < image_width; i++) {
+		for (int j = 0; j < image_height; j++) {
+			img.draw_point(i, j, color);
+		}
+	}
 
 	// load circle triangles from obj
 	std::vector<Triangle> circle_triangles = triangleobjloader("sphere.obj");
-
+	circle_triangles = scaleObj(circle_triangles, 5.0f, 5.0f, 5.0f);
+	// circle_triangles = changeObjPosition(circle_triangles, glm::vec4(10.0f, 1.0f, 1.0f, 0.0f));
 	// load cube triangles from obj
 	std::vector<Triangle> cube_triangles = triangleobjloader("cube.obj");
 	//circle_triangles.insert(circle_triangles.end(), cube_triangles.begin(), cube_triangles.end());
@@ -337,7 +359,7 @@ int main()
 	for (int i = 0; i < image_points.size(); i++) {
 		color[0] = image_colors[i].x;
 		color[1] = image_colors[i].y;
-		color[2] = image_colors[i].z;;
+		color[2] = image_colors[i].z;
 		img.draw_point(image_points[i].x, image_points[i].y, color);
 	}
 	img.display("Simple Raytracer by Leon Lang");
