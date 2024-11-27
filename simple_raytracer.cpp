@@ -105,6 +105,47 @@ std::vector<Triangle> triangle_matrix_mutliplication(std::vector<Triangle> trian
 	}
 	return t_multi;
 }
+glm::mat4 viewSpaceTransformation(float angleDegree) {
+
+	// create a circle and get the x and z coordinated for a specific degree
+	// in its radius. With this I can spin the camera around the center
+	float radius = 80.0f;
+	float radians = glm::radians(angleDegree);
+
+	float circleX = radius * std::cos(radians);
+	float circleZ = radius * std::sin(radians);
+
+	std::cout << circleZ;
+	// Define the view matrix
+	glm::mat4 viewMatrix(1.0f);
+	glm::vec3 cameraPosition(circleX, 0.f, circleZ);  // Where the camera is located
+	// glm::vec3 cameraPosition(0 , 00.f, 100.0f);  // Where the camera is located
+	glm::vec3 targetPosition(0.0f, 0.f, .0f);  // Where the camera is looking
+	glm::vec3 upVector(0.0f, 1.0f, 0.0f);        // Camera's up direction
+	// Rotation part
+
+	glm::vec3 zAxis = glm::normalize(cameraPosition - targetPosition);
+	glm::vec3 xAxis = glm::normalize(glm::cross(upVector, zAxis));
+	glm::vec3 yAxis = glm::cross(zAxis, xAxis);
+
+	viewMatrix[0][0] = xAxis.x;
+	viewMatrix[1][0] = xAxis.y;
+	viewMatrix[2][0] = xAxis.z;
+	viewMatrix[0][1] = yAxis.x;
+	viewMatrix[1][1] = yAxis.y;
+	viewMatrix[2][1] = yAxis.z;
+	viewMatrix[0][2] = zAxis.x;
+	viewMatrix[1][2] = zAxis.y;
+	viewMatrix[2][2] = zAxis.z;
+
+
+	// Translation part
+	viewMatrix[3][0] = -glm::dot(xAxis, cameraPosition);
+	viewMatrix[3][1] = -glm::dot(yAxis, cameraPosition);
+	viewMatrix[3][2] = -glm::dot(zAxis, cameraPosition);
+	return  viewMatrix;
+	// 2. Transform the world space position to view space}
+}
 std::vector<Triangle> scaleObj(std::vector<Triangle> triangles, float sx,float sy,float sz) {
 	glm::mat4 matrix = glm::mat4(0.0f); // Set the values of the matrix later 
 	matrix[0][0] = sx; 
@@ -292,7 +333,11 @@ glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::
 	// Means: intensity of light is is higher if the angle is sharper
 	// The dot product n * l represents this cosine value, and I use max to ensure it is non-negative
 	// p * Llight represents the final color of object with light 
-	glm::vec3 diffuse = rView * p * Llight * glm::max(glm::dot(n, l), 0.00f);
+	float dotProduct = glm::dot(n, l);
+	if (dotProduct < 0.0f) {
+		dotProduct = -dotProduct;
+	}
+	glm::vec3 diffuse = rView * p * Llight * glm::max(dotProduct, 0.00f);
 
 	// Calculate Ambient Reflection
 	// Ambient reflection represents the constant illumination of the object by the environment
@@ -310,14 +355,14 @@ glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::
 	// The specular term is calculated using the Phong reflection model
 	// It is based on the dot product between the view direction and the reflection direction, raised to the power of the shininess factor (m)
 	// s = specular strength. Smaller specular strength means less intensity
-	glm::vec3 specular = Llight * s * glm::max(glm::dot(n, l), 0.00f) * glm::pow(glm::max(glm::dot(r, v), 0.0f), m);
+	glm::vec3 specular = Llight * s * glm::max(dotProduct, 0.00f) * glm::pow(glm::max(glm::dot(r, v), 0.0f), m);
 
 	// Combine the three components (diffuse, specular, and ambient) to get the final color
 	return diffuse + specular + ambient;
 }
 
 
-std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> triangles, int point_x, int point_y){
+std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> triangles, int point_x, int point_y, glm::vec3 lightPos){
 	float distance_comparison = INFINITY;
 	glm::vec3 color_point(0,0,0);
 	for (int k = 0; k < triangles.size(); k++) {
@@ -327,7 +372,6 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> tr
 				distance_comparison = f_distance;
 
 				// Initialize Phong Illumination with a Red Object
-				glm::vec3 lightPos(300.0f, -300.0f, -1000.0f);
 				glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
 				glm::vec3 objectColor(1.0f, 0.0f, 0.0f); // Red object
 				float ambientStrength = 0.2f;
@@ -360,81 +404,98 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> tr
 
 int main()
 {
-	// create a triangle
-	Triangle triangle;
-	triangle.point_one = glm::vec4(5.0f, 0.0f, 0.0f,1.0f);
-	triangle.point_two = glm::vec4(-5.0f, 0.0f, 0.0f,1.0f);
-	triangle.point_three = glm::vec4(0.0f, 8.0f, 0.0f,1.0f);
+	for (float angleDegree = 10; angleDegree < 350; angleDegree = angleDegree + 500) {
 
-	// create a ray starting at z = -100 so you can see objects 
-	// which are centered at 0 0 0
-	Ray ray;
-	ray.direction = glm::vec3(0.0f, 0.0f,400.0f);
-	ray.origin = glm::vec3 (0.0f, 0.0f, -100.0f);
+		// create a triangle
+		Triangle triangle;
+		triangle.point_one = glm::vec4(5.0f, 0.0f, 0.0f, 1.0f);
+		triangle.point_two = glm::vec4(-5.0f, 0.0f, 0.0f, 1.0f);
+		triangle.point_three = glm::vec4(0.0f, 8.0f, 0.0f, 1.0f);
+
+		// create a ray starting at z = -100 so you can see objects 
+		// which are centered at 0 0 0
+		Ray ray;
+		ray.direction = glm::vec3(0.0f, 0.0f, 400.0f);
+		ray.origin = glm::vec3(0.0f, 0.0f, 0.0f);
 
 
-	// define default color for rays
-	unsigned char color[] = { 255,128,64 };
+		// define default color for rays
+		unsigned char color[] = { 255,128,64 };
 
-	// create image
-	int image_width = 300;
-	int image_height = 250;
-	CImg<unsigned char> img(image_width, image_height, 1, 3);
-	img.fill(0);
-	for (int i = 0; i < image_width; i++) {
-		for (int j = 0; j < image_height; j++) {
-			img.draw_point(i, j, color);
+		// create image
+		int image_width = 300;
+		int image_height = 250;
+		CImg<unsigned char> img(image_width, image_height, 1, 3);
+		img.fill(0);
+		for (int i = 0; i < image_width; i++) {
+			for (int j = 0; j < image_height; j++) {
+				img.draw_point(i, j, color);
+			}
 		}
-	}
 
-	// load circle triangles from obj
-	std::vector<Triangle> circle_triangles = triangleobjloader("sphere.obj");
-	circle_triangles = scaleObj(circle_triangles, 5.0f, 5.0f, 5.0f);
-	circle_triangles = changeObjPosition(circle_triangles, glm::vec3(20.0f, -15.0f, 0.0f));
-	// circle_triangles = mirrorObj(circle_triangles, true, false, false);
-	// load cube triangles from obj
-	std::vector<Triangle> cube_triangles = triangleobjloader("cube.obj");
-	cube_triangles = scaleObj(cube_triangles, 10.0f, 10.0f, 10.0f);
-	cube_triangles = rotateObjX(cube_triangles, 45.0f);
-	cube_triangles = changeObjPosition(cube_triangles, glm::vec3(-20.0f, 10.0f, 0.0f));
-	// cube_triangles = rotateObjY(cube_triangles, 45.0f);
-	// cube_triangles = shearObj(cube_triangles, 0.0f, 0.0f, 0.1f);
-	// cube_triangles = mirrorObj(cube_triangles, false, true, false);
+		// load circle triangles from obj
+		std::vector<Triangle> circle_triangles = triangleobjloader("sphere.obj");
+		// circle_triangles = mirrorObj(circle_triangles, true, false, false);
+		circle_triangles = scaleObj(circle_triangles, 5.0f, 5.0f, 5.0f);
+		circle_triangles = changeObjPosition(circle_triangles, glm::vec3(20.0f, -15.0f, 0.0f));
+		circle_triangles = triangle_matrix_mutliplication(circle_triangles, viewSpaceTransformation(angleDegree));
+		// circle_triangles = mirrorObj(circle_triangles, true, false, false);
+		// load cube triangles from obj
+		std::vector<Triangle> cube_triangles = triangleobjloader("cube.obj");
+		// cube_triangles = mirrorObj(cube_triangles, true, false, false);
+		cube_triangles = scaleObj(cube_triangles, 10.0f, 10.0f, 10.0f);
+		// cube_triangles = rotateObjX(cube_triangles, 10.0f);
+		// cube_triangles = changeObjPosition(cube_triangles, glm::vec3(0.0f, 0.0f, 0.0f));
+		// cube_triangles = triangle_matrix_mutliplication(cube_triangles, viewSpaceTransformation(angleDegree));
 
-	// cube_triangles = rotateObjZ(cube_triangles, 45.0f);
+		for (int k = 0; k < cube_triangles.size(); k++) {
+			glm::mat3 normalMatrix = viewSpaceTransformation(angleDegree);
+			cube_triangles[k].normal_one = normalMatrix * cube_triangles[k].normal_one;
+			cube_triangles[k].normal_two = normalMatrix * cube_triangles[k].normal_two;
+			cube_triangles[k].normal_three = normalMatrix * cube_triangles[k].normal_three;
+			cube_triangles[k].point_one = viewSpaceTransformation(angleDegree) * cube_triangles[k].point_one;
+			cube_triangles[k].point_two = viewSpaceTransformation(angleDegree) * cube_triangles[k].point_two;
+			cube_triangles[k].point_three = viewSpaceTransformation(angleDegree) * cube_triangles[k].point_three;
+		}
+		// cube_triangles = rotateObjY(cube_triangles, 45.0f);
+		// cube_triangles = shearObj(cube_triangles, 0.0f, 0.0f, 0.1f);
+		// cube_triangles = rotateObjZ(cube_triangles, 45.0f);
 
-	circle_triangles.insert(circle_triangles.end(), cube_triangles.begin(), cube_triangles.end());
-	
-	// add triangle
-	//circle_triangles.push_back(triangle);
+		circle_triangles.insert(circle_triangles.end(), cube_triangles.begin(), cube_triangles.end());
 
-	// send rays out based from the center of the ray origin and intersect them with triangles
-	std::vector<glm::vec2> image_points;
-	std::vector<glm::vec3> image_colors;
-	for (int i = -image_width / 2; i < image_width / 2; ++i)
-	{
-		for (int j = -image_height / 2; j < image_height / 2; ++j)
+		// add triangle
+		//circle_triangles.push_back(triangle);
+
+		// send rays out based from the center of the ray origin and intersect them with triangles
+		std::vector<glm::vec2> image_points;
+		std::vector<glm::vec3> image_colors;
+		glm::vec4 lightPos(200.0f, -300.0f, -1000.4f, 1.0f);
+		// lightPos = viewSpaceTransformation(angleDegree) * lightPos;
+		for (int i = -image_width / 2; i < image_width / 2; ++i)
 		{
-			ray.direction.x = i;
-			ray.direction.y = j;
-			std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, circle_triangles, i + image_width / 2, j + image_height / 2);
-			image_points.push_back(points.first);
-			image_colors.push_back(points.second);
+			for (int j = -image_height / 2; j < image_height / 2; ++j)
+			{
+				ray.direction.x = i;
+				ray.direction.y = j;
+
+				std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, circle_triangles, i + image_width / 2, j + image_height / 2, lightPos);
+				image_points.push_back(points.first);
+				image_colors.push_back(points.second);
+			}
 		}
-	}
 
-	// draw pixels found in ray intersection
-	for (int i = 0; i < image_points.size(); i++) {
-		color[0] = image_colors[i].x;
-		color[1] = image_colors[i].y;
-		color[2] = image_colors[i].z;
-		img.draw_point(image_points[i].x, image_points[i].y, color);
-	}
+		// draw pixels found in ray intersection
+		for (int i = 0; i < image_points.size(); i++) {
+			color[0] = image_colors[i].x;
+			color[1] = image_colors[i].y;
+			color[2] = image_colors[i].z;
+			img.draw_point(image_points[i].x, image_points[i].y, color);
+		}
 
-	unsigned char light_blue[] = { 173, 216, 230 }; // RGB values for light blue
+		unsigned char light_blue[] = { 173, 216, 230 }; // RGB values for light blue
 
 		// Iterate through all the pixels
-	cimg_forXY(img, x, y) {
+		cimg_forXY(img, x, y) {
 			// Check if the pixel is black (all channels are 0)
 			if (img(x, y, 0, 0) == 0 && img(x, y, 0, 1) == 0 && img(x, y, 0, 2) == 0) {
 				// Change the pixel to light blue
@@ -443,8 +504,11 @@ int main()
 				img(x, y, 0, 2) = light_blue[2]; // Blue channel
 			}
 		}
+		std::string imgName = "output";
+		imgName += std::to_string(static_cast<int>(angleDegree));
+		imgName += ".bmp";
+		img.save_bmp(imgName.c_str()); // Use c_str() to get a const char* from std::string
+		img.display("Simple Raytracer by Leon Lang");
 
-
-	img.save_bmp("output.bmp");
-	img.display("Simple Raytracer by Leon Lang");
+	}
 }
