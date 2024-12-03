@@ -15,107 +15,13 @@ using namespace cimg_library;
 #define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
 #define TINYOBJLOADER_USE_MAPBOX_EARCUT
 #include "tiny_obj_loader.h"
-/*
-struct Ray {
-	glm::vec3 origin;
-	glm::vec3 direction;
-};
 
-struct Triangle {
-	glm::vec4 pointOne;
-	glm::vec4 pointTwo;
-	glm::vec4 pointThree;
-	glm::vec3 normalOne;  // Normal at pointOne
-	glm::vec3 normalTwo;  // Normal at pointTwo
-	glm::vec3 normalThree; // Normal at pointThree
-};
-*/
 glm::vec3 calculateTriangleNormal(Triangle triangle) {
 	glm::vec3 v1 = triangle.pointTwo - triangle.pointOne;
 	glm::vec3 v2 = triangle.pointThree - triangle.pointOne;
 	glm::vec3 normal = glm::cross(v1, v2);
 	return glm::normalize(normal);
 }
-
-std::vector<Triangle> triangleObjLoader(std::string objFilename) {
-	std::string inputFile = objFilename;
-	tinyobj::ObjReader reader;
-
-	if (!reader.ParseFromFile(inputFile)) {
-		if (!reader.Error().empty()) {
-			std::cerr << "TinyObjReader: " << reader.Error();
-		}
-	}
-	/*
-	if (!reader.Warning().empty()) {
-		std::cout << "TinyObjReader: " << reader.Warning();
-	} */
-
-	auto& attrib = reader.GetAttrib();
-	auto& shapes = reader.GetShapes();
-	auto& materials = reader.GetMaterials();
-
-	std::vector<Triangle> triangles;
-
-	// store triangles and normals
-	for (const auto& shape : shapes) {
-		for (const auto& index : shape.mesh.indices) {
-			glm::vec3 vertex(
-				attrib.vertices[3 * index.vertex_index + 0],
-				attrib.vertices[3 * index.vertex_index + 1],
-				attrib.vertices[3 * index.vertex_index + 2]
-			);
-			glm::vec3 normal(
-				attrib.normals[3 * index.normal_index + 0],
-				attrib.normals[3 * index.normal_index + 1],
-				attrib.normals[3 * index.normal_index + 2]
-			);
-			static std::vector<glm::vec3> vertices;
-			vertices.push_back(vertex);
-			static std::vector<glm::vec3> normals;
-			normals.push_back(normal);
-			if (vertices.size() == 3) {
-				Triangle triangle;
-				// Convert them to triangle Points and add 1 for homogeneous notation
-				triangle.pointOne = glm::vec4(vertices[0], 1);
-				triangle.pointTwo = glm::vec4(vertices[1], 1);
-				triangle.pointThree = glm::vec4(vertices[2], 1);
-				triangle.normalOne = normals[0];
-				triangle.normalTwo = normals[1];
-				triangle.normalThree = normals[2];
-				triangles.push_back(triangle);
-				vertices.clear();
-				normals.clear();
-			}
-		}
-	}
-
-	// Output the triangles
-	/*
-	for (const auto& triangle : triangles) {
-		std::cout << "Triangle: \n";
-		std::cout << "  Point One: (" << triangle.pointOne.x << ", " << triangle.pointOne.y << ", " << triangle.pointOne.z << ")\n";
-		std::cout << "  Point Two: (" << triangle.pointTwo.x << ", " << triangle.pointTwo.y << ", " << triangle.pointTwo.z << ")\n";
-		std::cout << "  Point Three: (" << triangle.pointThree.x << ", " << triangle.pointThree.y << ", " << triangle.pointThree.z << ")\n";
-	}
-	std::cout << "Size:\n";
-	std::cout << triangles.size(); */
-	return triangles;
-}
-
-std::vector<Triangle> objTransform(std::vector<Triangle> triangles, glm::mat4 matrix) {
-	// Triangle Matrix Multiplication
-	std::vector<Triangle> obj;
-	for (int k = 0; k < triangles.size(); k++) {
-		Triangle t = triangles[k];
-		t.pointOne = matrix * triangles[k].pointOne;
-		t.pointTwo = matrix * triangles[k].pointTwo;
-		t.pointThree = matrix * triangles[k].pointThree;
-		obj.push_back(t);
-	}
-	return obj;
-}
-
 
 inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
 	// Intersection of a ray with a triangle
@@ -264,21 +170,19 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManage
 		const std::vector<Triangle>& triangles = pair.second;
 
 
-
 		float distanceComparison = INFINITY;
 		for (int k = 0; k < triangles.size(); k++) {
 			float fDistance = rayTriangleIntersection(&ray, &triangles[k]);
 			if (fDistance != -INFINITY) {
 				if (fDistance < distanceComparison) {
 					distanceComparison = fDistance;
-
 					// Initialize Phong Illumination with a Red Object
 					glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
 					glm::vec3 objectColor(1.0f, 0.0f, 0.0f); // Red object
 					float ambientStrength = 0.2f;
 					float specularStrength = 0.5f;
 					float shininess = 15.0f;
-					glm::vec3 color = phongIllumination(triangles[k], ray, lightPos, lightColor, objectColor, ambientStrength, specularStrength, shininess, fDistance);
+					glm::vec3 color = phongIllumination(triangles[k], ray, lightPos, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
 					color = glm::clamp(color, 0.0f, 1.0f);
 					colorPoint.x = int((color.x * 255));
 					colorPoint.y = int((color.y * 255));
@@ -346,21 +250,20 @@ int main()
 		// Create an ObjectManager instance 
 		ObjectManager objManager; 
 
-		/*
+		
 		// Load Sphere Triangles and transform them
 		objManager.loadObjFile("sphere.obj"); 
-		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(0.f, 0.f, 10.f)));
-		*/
+		// objManager.objTriangles["sphere1.obj"] = objManager.getTriangles("sphere.obj");
+		// objManager.objColors["sphere1.obj"] = objManager.getColor("sphere.obj");
+
+		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(0.f, 5.f, 30.f)));
+		// objManager.transformTriangles("sphere1.obj", Transformation::changeObjPosition(glm::vec3(0.f, 0.f, 10.f)));
 
 		// Load Cube Triangles and transform them
 		objManager.loadObjFile("cube.obj");
+		objManager.setColor("cube.obj", glm::vec3(0.f, 0.f, 1.f));
 		objManager.transformTriangles("cube.obj", Transformation::scaleObj(10.0f, 10.0f, 10.0f));
 		objManager.transformTriangles("cube.obj", glm::inverse(viewMatrix));
-
-
-
-
-
 
 		// send rays out based from the center of the ray origin and intersect them with triangles
 		std::vector<glm::vec2> imagePoints;

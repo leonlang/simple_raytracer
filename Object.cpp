@@ -20,10 +20,13 @@ glm::vec3 Triangle::calculateNormal() const {
 Ray::Ray(glm::vec3 d) 
     : origin(0.0f, 0.0f, 0.0f), direction(d) {}
 
+
 // ObjectManager class implementation
 void ObjectManager::loadObjFile(const std::string& objFilename) {
     std::string inputFile = objFilename;
     tinyobj::ObjReader reader;
+
+    objColors[objFilename] = glm::vec3(1.f,0.f,1.f);
 
     if (!reader.ParseFromFile(inputFile)) {
         if (!reader.Error().empty()) {
@@ -87,4 +90,11 @@ void ObjectManager::transformTriangles(const std::string& objFilename, const glm
         t.pointTwo = matrix * t.pointTwo;
         t.pointThree = matrix * t.pointThree; 
     } 
+}
+
+void ObjectManager::setColor(const std::string& objFilename, const glm::vec3& color) {
+    objColors[objFilename] = color; 
+} 
+glm::vec3 ObjectManager::getColor(const std::string& objFilename) const {
+    return objColors.at(objFilename); 
 }

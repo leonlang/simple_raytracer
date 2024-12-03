@@ -41,7 +41,8 @@ public:
 class ObjectManager {
 public:
     std::unordered_map<std::string, std::vector<Triangle>> objTriangles;
-
+    // define object color
+    std::unordered_map<std::string, glm::vec3> objColors;
     // Method to load triangles from an OBJ file
     void loadObjFile(const std::string& objFilename);
 
@@ -53,6 +54,11 @@ public:
 
     // Method to transform triangles for a specific OBJ file 
     void transformTriangles(const std::string& objFilename, const glm::mat4& matrix);
+
+    // Method to set color for a specific OBJ file 
+    void setColor(const std::string& objFilename, const glm::vec3& color);
+    // Method to get color for a specific OBJ file 
+    glm::vec3 getColor(const std::string& objFilename) const;
 };
 
 #endif // OBJECT_H
