@@ -8,12 +8,14 @@
 #include "CImg.h"
 #include <chrono>
 #include "Transformation.h"
+#include "Object.h"
+
 
 using namespace cimg_library;
 #define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
 #define TINYOBJLOADER_USE_MAPBOX_EARCUT
 #include "tiny_obj_loader.h"
-
+/*
 struct Ray {
 	glm::vec3 origin;
 	glm::vec3 direction;
@@ -27,8 +29,8 @@ struct Triangle {
 	glm::vec3 normalTwo;  // Normal at pointTwo
 	glm::vec3 normalThree; // Normal at pointThree
 };
-
-glm::vec3 calculateTriangleNormal(const Triangle& triangle) {
+*/
+glm::vec3 calculateTriangleNormal(Triangle triangle) {
 	glm::vec3 v1 = triangle.pointTwo - triangle.pointOne;
 	glm::vec3 v2 = triangle.pointThree - triangle.pointOne;
 	glm::vec3 normal = glm::cross(v1, v2);
@@ -312,9 +314,9 @@ int main()
 		triangle.pointThree = glm::vec4(0.0f, 8.0f, 0.0f, 1.0f);
 
 		// create a ray 
-		Ray ray;
-		ray.direction = glm::vec3(0.0f, 0.0f, 400.0f);
-		ray.origin = glm::vec3(0.0f, 0.0f, 0.0f);
+		Ray ray(glm::vec3(0.0f, 0.0f, 400.0f));
+		// ray.direction = glm::vec3(0.0f, 0.0f, 400.0f);
+		// ray.origin = glm::vec3(0.0f, 0.0f, 0.0f);
 
 		// define default color for rays
 		unsigned char color[] = { 255,128,64 };
