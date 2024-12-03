@@ -230,19 +230,11 @@ int main()
 		Ray ray(glm::vec3(0.0f, 0.0f, 400.0f));
 
 
-		// define default color for rays
-		unsigned char color[] = { 255,128,64 };
-
 		// create image
 		int imageWidth = 300;
 		int imageHeight = 250;
 		CImg<unsigned char> img(imageWidth, imageHeight, 1, 3);
 		img.fill(0);
-		for (int i = 0; i < imageWidth; i++) {
-			for (int j = 0; j < imageHeight; j++) {
-				img.draw_point(i, j, color);
-			}
-		}
 
 		// create viewMatrix
 		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -100.f, circleZ), glm::vec3(glm::radians(50.f), glm::radians(angleDegree + 90.f), 0.f));
@@ -286,6 +278,7 @@ int main()
 
 		// draw pixels found in ray intersection
 		for (int i = 0; i < imagePoints.size(); i++) {
+			unsigned char color[] = { 0,0,0 };
 			color[0] = imageColors[i].x;
 			color[1] = imageColors[i].y;
 			color[2] = imageColors[i].z;
