@@ -256,41 +256,50 @@ glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::
 	return diffuse + specular + ambient;
 }
 
-std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, std::vector<Triangle> triangles, int pointX, int pointY, glm::vec3 lightPos) {
-	float distanceComparison = INFINITY;
+std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManager, int pointX, int pointY, glm::vec3 lightPos) {
 	glm::vec3 colorPoint(0, 0, 0);
-	for (int k = 0; k < triangles.size(); k++) {
-		float fDistance = rayTriangleIntersection(&ray, &triangles[k]);
-		if (fDistance != -INFINITY) {
-			if (fDistance < distanceComparison) {
-				distanceComparison = fDistance;
 
-				// Initialize Phong Illumination with a Red Object
-				glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
-				glm::vec3 objectColor(1.0f, 0.0f, 0.0f); // Red object
-				float ambientStrength = 0.2f;
-				float specularStrength = 0.5f;
-				float shininess = 15.0f;
-				glm::vec3 color = phongIllumination(triangles[k], ray, lightPos, lightColor, objectColor, ambientStrength, specularStrength, shininess, fDistance);
-				color = glm::clamp(color, 0.0f, 1.0f);
-				colorPoint.x = int((color.x * 255));
-				colorPoint.y = int((color.y * 255));
-				colorPoint.z = int((color.z * 255));
+	for (const auto& pair : objManager.objTriangles) {
+		const std::string& objFilename = pair.first;
+		const std::vector<Triangle>& triangles = pair.second;
 
-				/*
-				* Draw the Triangles based on the intersection distance
-				int iDistance = int(fDistance * 40);
-				glm::vec3 tempColor(iDistance * 8, iDistance *8, iDistance * 8);
-				glm::vec3 clampColorTest = glm::vec3(fDistance, fDistance, fDistance);
-				glm::vec3 clampedColor = glm::clamp(clampColorTest, 0.4f, 2.5f);
-				clampedColor.x = int((clampedColor.x * 255));
-				clampedColor.y = int((clampedColor.y * 255));
-				clampedColor.z = int((clampedColor.z * 255));
-				colorPoint = tempColor;
-				colorPoint = clampedColor;
-				*/
+
+
+		float distanceComparison = INFINITY;
+		for (int k = 0; k < triangles.size(); k++) {
+			float fDistance = rayTriangleIntersection(&ray, &triangles[k]);
+			if (fDistance != -INFINITY) {
+				if (fDistance < distanceComparison) {
+					distanceComparison = fDistance;
+
+					// Initialize Phong Illumination with a Red Object
+					glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
+					glm::vec3 objectColor(1.0f, 0.0f, 0.0f); // Red object
+					float ambientStrength = 0.2f;
+					float specularStrength = 0.5f;
+					float shininess = 15.0f;
+					glm::vec3 color = phongIllumination(triangles[k], ray, lightPos, lightColor, objectColor, ambientStrength, specularStrength, shininess, fDistance);
+					color = glm::clamp(color, 0.0f, 1.0f);
+					colorPoint.x = int((color.x * 255));
+					colorPoint.y = int((color.y * 255));
+					colorPoint.z = int((color.z * 255));
+
+					/*
+					* Draw the Triangles based on the intersection distance
+					int iDistance = int(fDistance * 40);
+					glm::vec3 tempColor(iDistance * 8, iDistance *8, iDistance * 8);
+					glm::vec3 clampColorTest = glm::vec3(fDistance, fDistance, fDistance);
+					glm::vec3 clampedColor = glm::clamp(clampColorTest, 0.4f, 2.5f);
+					clampedColor.x = int((clampedColor.x * 255));
+					clampedColor.y = int((clampedColor.y * 255));
+					clampedColor.z = int((clampedColor.z * 255));
+					colorPoint = tempColor;
+					colorPoint = clampedColor;
+					*/
+				}
 			}
 		}
+
 	}
 	glm::vec2 imagePoint(pointX, pointY);
 	return { imagePoint, colorPoint };
@@ -336,26 +345,22 @@ int main()
 
 		// Create an ObjectManager instance 
 		ObjectManager objManager; 
-		// Load OBJ files 
-		objManager.loadObjFile("sphere.obj"); 
-		objManager.loadObjFile("cube.obj");		
-		// load circle triangles from obj
-		// std::vector<Triangle> circleTriangles = objManager.getTriangles("sphere.obj");
-		// load cube triangles from obj
-		// std::vector<Triangle> cubeTriangles = objManager.getTriangles("cube.obj");
 
-		// Transform Cube Triangles
+		/*
+		// Load Sphere Triangles and transform them
+		objManager.loadObjFile("sphere.obj"); 
+		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(0.f, 0.f, 10.f)));
+		*/
+
+		// Load Cube Triangles and transform them
+		objManager.loadObjFile("cube.obj");
 		objManager.transformTriangles("cube.obj", Transformation::scaleObj(10.0f, 10.0f, 10.0f));
 		objManager.transformTriangles("cube.obj", glm::inverse(viewMatrix));
 
-		// cubeTriangles = objTransform(cubeTriangles, Transformation::scaleObj(10.0f, 10.0f, 10.0f));
-		// cubeTriangles = objTransform(cubeTriangles, glm::inverse(viewMatrix));
 
-		// combine objects
-		// circleTriangles.insert(circleTriangles.end(), objManager.getTriangles("cube.obj").begin(), objManager.getTriangles("cube.obj").end());
 
-		// add triangle
-		//circleTriangles.push_back(triangle);
+
+
 
 		// send rays out based from the center of the ray origin and intersect them with triangles
 		std::vector<glm::vec2> imagePoints;
@@ -370,7 +375,7 @@ int main()
 				ray.direction.x = i + rayXY.x;
 				ray.direction.y = j + rayXY.y;
 
-				std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, objManager.getTriangles("cube.obj"), i + imageWidth / 2, j + imageHeight / 2, lightPos);
+				std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, objManager, i + imageWidth / 2, j + imageHeight / 2, lightPos);
 				imagePoints.push_back(points.first);
 				imageColors.push_back(points.second);
 			}
