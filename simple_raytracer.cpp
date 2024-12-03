@@ -7,6 +7,7 @@
 #include <gtc/type_ptr.hpp>
 #include "CImg.h"
 #include <chrono>
+#include "Transformation.h"
 
 using namespace cimg_library;
 #define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
@@ -112,140 +113,6 @@ std::vector<Triangle> tm_mutli(std::vector<Triangle> triangles, glm::mat4 matrix
 	}
 	return t_multi;
 }
-glm::mat4 viewSpaceTransformation(float angleDegree) {
-	// Create a circle and get the x and z coordinates for a specific degree
-	// in its radius. With this, we can spin the camera around the center.
-	float radius = 80.0f; // Radius of the circle on which the camera moves
-	float radians = glm::radians(angleDegree); // Convert angle from degrees to radians
-
-	float circleX = radius * std::cos(radians); // Calculate x coordinate on the circle
-	float circleZ = radius * std::sin(radians); // Calculate z coordinate on the circle
-
-	// Define the view matrix
-	glm::mat4 viewMatrix(1.0f); // Initialize view matrix as identity matrix
-	// glm::vec3 cameraPosition(circleX, 0.f, circleZ); // Camera position on the circle
-	glm::vec3 cameraPosition(0.f, 0.f, 100.f); // Camera position on the circle
-	glm::vec3 targetPosition(0.0f, 0.f, 0.0f); // Point the camera is looking at (origin)
-	glm::vec3 upVector(0.0f, 1.0f, 0.0f); // Up direction for the camera (y-axis)
-
-	// Calculate the axes for the rotation part of the view matrix
-	glm::vec3 zAxis = glm::normalize(cameraPosition - targetPosition); // Forward direction
-	// zAxis is the normalized vector pointing from the target to the camera.
-	// It represents the forward direction in the camera's coordinate system.
-
-	glm::vec3 xAxis = glm::normalize(glm::cross(upVector, zAxis)); // Right direction
-	// xAxis is the normalized cross product of the upVector and zAxis.
-	// It represents the right direction in the camera's coordinate system.
-	// The cross product ensures that xAxis is at 90 to both upVector and zAxis.
-
-	glm::vec3 yAxis = glm::cross(zAxis, xAxis); // Recalculated up direction
-	// yAxis is the cross product of zAxis and xAxis.
-	// It represents the up direction in the camera's coordinate system.
-	// This ensures that yAxis is perpendicular to both zAxis and xAxis.
-
-	// Set the rotation part of the view matrix
-	viewMatrix[0][0] = xAxis.x;
-	viewMatrix[1][0] = xAxis.y;
-	viewMatrix[2][0] = xAxis.z;
-	viewMatrix[0][1] = yAxis.x;
-	viewMatrix[1][1] = yAxis.y;
-	viewMatrix[2][1] = yAxis.z;
-	viewMatrix[0][2] = zAxis.x;
-	viewMatrix[1][2] = zAxis.y;
-	viewMatrix[2][2] = zAxis.z;
-	// The rotation part of the view matrix is set using the calculated axes.
-	// Each axis (x, y, z) is assigned to the corresponding columns of the view matrix.
-
-	// Set the translation part of the view matrix
-	viewMatrix[3][0] = -glm::dot(xAxis, cameraPosition); // Translate x
-	viewMatrix[3][1] = -glm::dot(yAxis, cameraPosition); // Translate y
-	viewMatrix[3][2] = -glm::dot(zAxis, cameraPosition); // Translate z
-	// The translation part of the view matrix is set by taking the dot product of each axis
-	// with the camera position and negating it. This effectively moves the camera to the origin
-	// of the world coordinate system, translating the world in the opposite direction.
-
-	return viewMatrix; // Return the final view matrix
-}
-
-glm::mat4 scaleObj(float sx,float sy,float sz) {
-	glm::mat4 matrix = glm::mat4(0.0f); // Set the values of the matrix later 
-	matrix[0][0] = sx; 
-	matrix[1][1] = sy; 
-	matrix[2][2] = sz;
-	matrix[3][3] = 1.0f;
-	return matrix;
-}
-
-glm::mat4 rotateObjX(float degree ) {
-	glm::mat4 matrix = glm::mat4(0.0f); // Set the values of the matrix later 
-	matrix[0][0] = 1;
-	matrix[1][1] = std::cos(degree);
-	matrix[1][2] = -std::sin(degree);
-	matrix[2][1] = std::sin(degree);
-	matrix[2][2] = std::cos(degree);
-	matrix[3][3] = 1.0f;
-	return matrix;
-}
-
-glm::mat4 rotateObjY(float degree) {
-	glm::mat4 matrix = glm::mat4(0.0f); // Set the values of the matrix later
-	matrix[0][0] = std::cos(degree);
-	matrix[0][2] = std::sin(degree);
-	matrix[1][1] = 1.0f;
-	matrix[2][0] = -std::sin(degree);
-	matrix[2][2] = std::cos(degree);
-	matrix[3][3] = 1.0f;
-	return matrix;
-}
-
-glm::mat4 rotateObjZ(float degree) {
-	glm::mat4 matrix = glm::mat4(0.0f); // Set the values of the matrix later
-	matrix[0][0] = std::cos(degree);
-	matrix[0][1] = -std::sin(degree);
-	matrix[1][0] = std::sin(degree);
-	matrix[1][1] = std::cos(degree);
-	matrix[2][2] = 1.0f;
-	matrix[3][3] = 1.0f;
-	return matrix;
-}
-
-glm::mat4 mirrorObj(bool mirrorX = false, bool mirrorY = false, bool mirrorZ = false) {
-	glm::mat4 matrix = glm::mat4(1.0f); // Identity matrix
-
-	// Apply mirroring transformations
-	if (mirrorX) {
-		matrix[0][0] = -1.0f; // Mirror along the X-axis
-	}
-	if (mirrorY) {
-		matrix[1][1] = -1.0f; // Mirror along the Y-axis
-	}
-	if (mirrorZ) {
-		matrix[2][2] = -1.0f; // Mirror along the Z-axis
-	}
-
-	return matrix;
-}
-
-glm::mat4 shearObj(float shearXY = 0.0f, float shearXZ = 0.0f, float shearYX = 0.0f, float shearYZ = 0.0f, float shearZX = 0.0f, float shearZY = 0.0f) {
-	glm::mat4 matrix = glm::mat4(1.0f); // Identity matrix
-
-	// Apply shearing transformations
-	matrix[1][0] = shearXY; // Shear along the Y-axis in the X direction
-	matrix[2][0] = shearXZ; // Shear along the Z-axis in the X direction
-	matrix[0][1] = shearYX; // Shear along the X-axis in the Y direction
-	matrix[2][1] = shearYZ; // Shear along the Z-axis in the Y direction
-	matrix[0][2] = shearZX; // Shear along the X-axis in the Z direction
-	matrix[1][2] = shearZY; // Shear along the Y-axis in the Z direction
-
-	return matrix;
-}
-
-glm::mat4 changeObjPosition(glm::vec3 position) {
-	glm::mat4 translationMatrix = glm::mat4(1.0f); // Identity matrix
-	translationMatrix[3] = glm::vec4(position,1.0f);
-	return translationMatrix;
-}
-
 inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
 	// Intersection of a ray with a triangle
 	// This implementation uses the Möller–Trumbore intersection algorithm
@@ -431,7 +298,7 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray,std::vector<Triangle> tr
 int main()
 {
 
-	for (float angleDegree = 0; angleDegree < 360; angleDegree = angleDegree + 10) {
+	for (float angleDegree = 40; angleDegree < 360; angleDegree = angleDegree + 1000) {
 
 		// Create a circle and get the x and z coordinates for a specific degree
 		// in its radius. With this, we can spin the camera around the center.
@@ -471,10 +338,7 @@ int main()
 
 
 
-		std::cout << "Angle Degree X " << circleX << " Angle Degree Z" << circleZ;
-		// glm::mat4 view_matrix =  changeObjPosition(glm::vec3(100.f, 0.f, 0.f)) * rotateObjY(glm::radians(90.f));
-		glm::mat4 view_matrix = changeObjPosition(glm::vec3(circleX, -100.f, circleZ)) * rotateObjY(glm::radians(angleDegree + 90.f)) * rotateObjX(glm::radians(50.f));
-
+		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -100.f, circleZ), glm::vec3(glm::radians(50.f), glm::radians(angleDegree + 90.f), 0.f));
 
 
 
@@ -489,8 +353,8 @@ int main()
 		// circle_triangles = mirrorObj(circle_triangles, true, false, false);
 		// load cube triangles from obj
 		std::vector<Triangle> cube_triangles = triangleobjloader("cube.obj");
-		cube_triangles = tm_mutli(cube_triangles, scaleObj(10.0f, 10.0f, 10.0f));
-		cube_triangles = tm_mutli(cube_triangles, glm::inverse(view_matrix));
+		cube_triangles = tm_mutli(cube_triangles, Transformation::scaleObj(10.0f, 10.0f, 10.0f));
+		cube_triangles = tm_mutli(cube_triangles, glm::inverse(viewMatrix));
 		// cube_triangles = mirrorObj(cube_triangles, true, false, false);
 		// cube_triangles = scaleObj(cube_triangles, 10.0f, 10.0f, 10.0f);
 		// cube_triangles = rotateObjX(cube_triangles, 10.0f);
@@ -509,7 +373,6 @@ int main()
 		// cube_triangles = rotateObjY(cube_triangles, 45.0f);
 		// cube_triangles = shearObj(cube_triangles, 0.0f, 0.0f, 0.1f);
 		// cube_triangles = rotateObjZ(cube_triangles, 45.0f);
-
 		circle_triangles.insert(circle_triangles.end(), cube_triangles.begin(), cube_triangles.end());
 
 		// add triangle
@@ -558,7 +421,7 @@ int main()
 		imgName += std::to_string(static_cast<int>(angleDegree));
 		imgName += ".bmp";
 		img.save_bmp(imgName.c_str()); // Use c_str() to get a const char* from std::string
-		// img.display("Simple Raytracer by Leon Lang");
+		img.display("Simple Raytracer by Leon Lang");
 
 	}
 }

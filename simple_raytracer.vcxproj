@@ -129,6 +129,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="simple_raytracer.cpp" />
+    <ClCompile Include="Transformation.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Transformation.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
