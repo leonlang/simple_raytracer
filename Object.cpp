@@ -19,7 +19,7 @@ glm::vec3 Triangle::calculateNormal() const {
 // Ray class implementation 
 Ray::Ray(glm::vec3 d) 
     : origin(0.0f, 0.0f, 0.0f), direction(d) {}
-/*
+
 // ObjectManager class implementation
 void ObjectManager::loadObjFile(const std::string& objFilename) {
     std::string inputFile = objFilename;
@@ -76,4 +76,15 @@ void ObjectManager::loadObjFile(const std::string& objFilename) {
 const std::vector<Triangle>& ObjectManager::getTriangles(const std::string& objFilename) const {
     return objTriangles.at(objFilename);
 }
-*/
+void ObjectManager::setTriangles(const std::string& objFilename, const std::vector<Triangle>& triangles) {
+    objTriangles[objFilename] = triangles; 
+}
+
+void ObjectManager::transformTriangles(const std::string& objFilename, const glm::mat4& matrix) { 
+    std::vector<Triangle>& triangles = objTriangles[objFilename]; 
+    for (Triangle& t : triangles) { 
+        t.pointOne = matrix * t.pointOne;
+        t.pointTwo = matrix * t.pointTwo;
+        t.pointThree = matrix * t.pointThree; 
+    } 
+}

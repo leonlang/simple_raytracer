@@ -37,7 +37,7 @@ public:
     // Constructor
     Ray(glm::vec3 d);
 };
-/*
+
 class ObjectManager {
 public:
     std::unordered_map<std::string, std::vector<Triangle>> objTriangles;
@@ -47,6 +47,12 @@ public:
 
     // Method to get triangles for a specific OBJ file
     const std::vector<Triangle>& getTriangles(const std::string& objFilename) const;
+
+    // Method to set triangles for a specific OBJ file 
+    void setTriangles(const std::string& objFilename, const std::vector<Triangle>& triangles);
+
+    // Method to transform triangles for a specific OBJ file 
+    void transformTriangles(const std::string& objFilename, const glm::mat4& matrix);
 };
-*/
+
 #endif // OBJECT_H

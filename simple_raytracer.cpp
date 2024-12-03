@@ -315,8 +315,7 @@ int main()
 
 		// create a ray 
 		Ray ray(glm::vec3(0.0f, 0.0f, 400.0f));
-		// ray.direction = glm::vec3(0.0f, 0.0f, 400.0f);
-		// ray.origin = glm::vec3(0.0f, 0.0f, 0.0f);
+
 
 		// define default color for rays
 		unsigned char color[] = { 255,128,64 };
@@ -335,17 +334,25 @@ int main()
 		// create viewMatrix
 		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -100.f, circleZ), glm::vec3(glm::radians(50.f), glm::radians(angleDegree + 90.f), 0.f));
 
+		// Create an ObjectManager instance 
+		ObjectManager objManager; 
+		// Load OBJ files 
+		objManager.loadObjFile("sphere.obj"); 
+		objManager.loadObjFile("cube.obj");		
 		// load circle triangles from obj
-		std::vector<Triangle> circleTriangles = triangleObjLoader("sphere.obj");
+		// std::vector<Triangle> circleTriangles = objManager.getTriangles("sphere.obj");
 		// load cube triangles from obj
-		std::vector<Triangle> cubeTriangles = triangleObjLoader("cube.obj");
+		// std::vector<Triangle> cubeTriangles = objManager.getTriangles("cube.obj");
 
 		// Transform Cube Triangles
-		cubeTriangles = objTransform(cubeTriangles, Transformation::scaleObj(10.0f, 10.0f, 10.0f));
-		cubeTriangles = objTransform(cubeTriangles, glm::inverse(viewMatrix));
+		objManager.transformTriangles("cube.obj", Transformation::scaleObj(10.0f, 10.0f, 10.0f));
+		objManager.transformTriangles("cube.obj", glm::inverse(viewMatrix));
+
+		// cubeTriangles = objTransform(cubeTriangles, Transformation::scaleObj(10.0f, 10.0f, 10.0f));
+		// cubeTriangles = objTransform(cubeTriangles, glm::inverse(viewMatrix));
 
 		// combine objects
-		circleTriangles.insert(circleTriangles.end(), cubeTriangles.begin(), cubeTriangles.end());
+		// circleTriangles.insert(circleTriangles.end(), objManager.getTriangles("cube.obj").begin(), objManager.getTriangles("cube.obj").end());
 
 		// add triangle
 		//circleTriangles.push_back(triangle);
@@ -363,7 +370,7 @@ int main()
 				ray.direction.x = i + rayXY.x;
 				ray.direction.y = j + rayXY.y;
 
-				std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, cubeTriangles, i + imageWidth / 2, j + imageHeight / 2, lightPos);
+				std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, objManager.getTriangles("cube.obj"), i + imageWidth / 2, j + imageHeight / 2, lightPos);
 				imagePoints.push_back(points.first);
 				imageColors.push_back(points.second);
 			}
