@@ -1,37 +1,5 @@
 #include "Transformation.h"
 
-glm::mat4 Transformation::viewSpaceTransformation(float angleDegree) {
-    float radius = 80.0f;
-    float radians = glm::radians(angleDegree);
-
-    float circleX = radius * std::cos(radians);
-    float circleZ = radius * std::sin(radians);
-
-    glm::mat4 viewMatrix(1.0f);
-    glm::vec3 cameraPosition(0.f, 0.f, 100.f);
-    glm::vec3 targetPosition(0.0f, 0.f, 0.0f);
-    glm::vec3 upVector(0.0f, 1.0f, 0.0f);
-
-    glm::vec3 zAxis = glm::normalize(cameraPosition - targetPosition);
-    glm::vec3 xAxis = glm::normalize(glm::cross(upVector, zAxis));
-    glm::vec3 yAxis = glm::cross(zAxis, xAxis);
-
-    viewMatrix[0][0] = xAxis.x;
-    viewMatrix[1][0] = xAxis.y;
-    viewMatrix[2][0] = xAxis.z;
-    viewMatrix[0][1] = yAxis.x;
-    viewMatrix[1][1] = yAxis.y;
-    viewMatrix[2][1] = yAxis.z;
-    viewMatrix[0][2] = zAxis.x;
-    viewMatrix[1][2] = zAxis.y;
-    viewMatrix[2][2] = zAxis.z;
-
-    viewMatrix[3][0] = -glm::dot(xAxis, cameraPosition);
-    viewMatrix[3][1] = -glm::dot(yAxis, cameraPosition);
-    viewMatrix[3][2] = -glm::dot(zAxis, cameraPosition);
-
-    return viewMatrix;
-}
 
 glm::mat4 Transformation::scaleObj(float sx, float sy, float sz) {
     glm::mat4 matrix = glm::mat4(0.0f);
