@@ -211,7 +211,7 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManage
 
 int main()
 {
-	for (float angleDegree = 40; angleDegree < 360; angleDegree = angleDegree + 1000) {
+	for (float angleDegree = 0; angleDegree < 360; angleDegree = angleDegree + 5) {
 
 		// Create a circle and get the x and z coordinates for a specific degree
 		// in its radius. With this, we can spin the camera around the center.
@@ -231,8 +231,8 @@ int main()
 
 
 		// create image
-		int imageWidth = 300;
-		int imageHeight = 250;
+		int imageWidth = 600;
+		int imageHeight = 400;
 		CImg<unsigned char> img(imageWidth, imageHeight, 1, 3);
 		img.fill(0);
 
@@ -244,17 +244,18 @@ int main()
 
 		
 		// Load Sphere Triangles and transform them
-		objManager.loadObjFile("sphere.obj"); 
+		// objManager.loadObjFile("sphere.obj"); 
 		// objManager.objTriangles["sphere1.obj"] = objManager.getTriangles("sphere.obj");
 		// objManager.objColors["sphere1.obj"] = objManager.getColor("sphere.obj");
 
-		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(0.f, 5.f, 30.f)));
+		// objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(0.f, 5.f, 30.f)));
 		// objManager.transformTriangles("sphere1.obj", Transformation::changeObjPosition(glm::vec3(0.f, 0.f, 10.f)));
 
 		// Load Cube Triangles and transform them
 		objManager.loadObjFile("cube.obj");
-		objManager.setColor("cube.obj", glm::vec3(0.f, 0.f, 1.f));
-		objManager.transformTriangles("cube.obj", Transformation::scaleObj(10.0f, 10.0f, 10.0f));
+		objManager.setColor("cube.obj", glm::vec3(1.f, 1.f, 0.f));
+		objManager.transformTriangles("cube.obj", Transformation::scaleObj(25.0f, 25.0f, 25.0f));
+		// objManager.transformTriangles("cube.obj", Transformation::mirrorObj());
 		objManager.transformTriangles("cube.obj", glm::inverse(viewMatrix));
 
 		// send rays out based from the center of the ray origin and intersect them with triangles
@@ -297,11 +298,11 @@ int main()
 				img(x, y, 0, 2) = lightBlue[2]; // Blue channel
 			}
 		}
-		std::string imgName = "output";
+		std::string imgName = "images/generation/output";
 		imgName += std::to_string(static_cast<int>(angleDegree));
 		imgName += ".bmp";
 		img.save_bmp(imgName.c_str()); // Use c_str() to get a const char* from std::string
-		img.display("Simple Raytracer by Leon Lang");
+		// img.display("Simple Raytracer by Leon Lang");
 
 	}
 }
