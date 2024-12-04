@@ -164,13 +164,12 @@ glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::
 
 std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManager, int pointX, int pointY, glm::vec3 lightPos) {
 	glm::vec3 colorPoint(0, 0, 0);
-
+	float distanceComparison = INFINITY;
 	for (const auto& pair : objManager.objTriangles) {
 		const std::string& objFilename = pair.first;
 		const std::vector<Triangle>& triangles = pair.second;
 
 
-		float distanceComparison = INFINITY;
 		for (int k = 0; k < triangles.size(); k++) {
 			float fDistance = rayTriangleIntersection(&ray, &triangles[k]);
 			if (fDistance != -INFINITY) {
@@ -211,7 +210,7 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManage
 
 int main()
 {
-	for (float angleDegree = 0; angleDegree < 360; angleDegree = angleDegree + 5) {
+	for (float angleDegree = 0; angleDegree < 360; angleDegree = angleDegree + 10) {
 
 		// Create a circle and get the x and z coordinates for a specific degree
 		// in its radius. With this, we can spin the camera around the center.
@@ -237,8 +236,8 @@ int main()
 		img.fill(0);
 
 		// create viewMatrix
-		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -100.f, circleZ), glm::vec3(glm::radians(50.f), glm::radians(angleDegree + 90.f), 0.f));
-
+		// glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -100.f, circleZ), glm::vec3(glm::radians(50.f), glm::radians(angleDegree + 90.f), 0.f));
+		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, 0.f, circleZ), glm::vec3(0.f, glm::radians(angleDegree + 90.f), 0.f));
 		// Create an ObjectManager instance 
 		ObjectManager objManager; 
 
@@ -254,9 +253,33 @@ int main()
 		// Load Cube Triangles and transform them
 		objManager.loadObjFile("cube.obj");
 		objManager.setColor("cube.obj", glm::vec3(1.f, 1.f, 0.f));
-		objManager.transformTriangles("cube.obj", Transformation::scaleObj(25.0f, 25.0f, 25.0f));
+
+
+		objManager.transformTriangles("cube.obj", Transformation::scaleObj(10.0f, 10.0f, 10.0f));
 		// objManager.transformTriangles("cube.obj", Transformation::mirrorObj());
+
+		objManager.objTriangles["cube1.obj"] = objManager.getTriangles("cube.obj");
+		objManager.objColors["cube1.obj"] = glm::vec3(1.f,0.f,1.f);
+		objManager.transformTriangles("cube1.obj", Transformation::changeObjPosition(glm::vec3(0.f, -15.f, -15.f)));
+
+		objManager.objTriangles["cube2.obj"] = objManager.getTriangles("cube.obj");
+		objManager.objColors["cube2.obj"] = glm::vec3(1.f, 0.f, 0.f);
+		objManager.transformTriangles("cube2.obj", Transformation::changeObjPosition(glm::vec3(0.f, -15.f, 15.f)));
+
+		objManager.objTriangles["cube3.obj"] = objManager.getTriangles("cube.obj");
+		objManager.objColors["cube3.obj"] = glm::vec3(0.f, 1.f, 0.f);
+		objManager.transformTriangles("cube3.obj", Transformation::changeObjPosition(glm::vec3(0.f, 15.f, 15.f)));
+
+
+		objManager.transformTriangles("cube.obj", Transformation::changeObjPosition(glm::vec3(0.f, 15.f, -15.f)));
+
+
 		objManager.transformTriangles("cube.obj", glm::inverse(viewMatrix));
+		objManager.transformTriangles("cube1.obj", glm::inverse(viewMatrix));
+		objManager.transformTriangles("cube2.obj", glm::inverse(viewMatrix));
+		objManager.transformTriangles("cube3.obj", glm::inverse(viewMatrix));
+
+
 
 		// send rays out based from the center of the ray origin and intersect them with triangles
 		std::vector<glm::vec2> imagePoints;
