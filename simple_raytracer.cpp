@@ -16,6 +16,8 @@ using namespace cimg_library;
 #define TINYOBJLOADER_USE_MAPBOX_EARCUT
 #include "tiny_obj_loader.h"
 
+struct ImageData { std::vector<glm::vec2> imagePoints; std::vector<glm::vec3> imageColors; };
+
 glm::vec3 calculateTriangleNormal(Triangle triangle) {
 	glm::vec3 v1 = triangle.pointTwo - triangle.pointOne;
 	glm::vec3 v2 = triangle.pointThree - triangle.pointOne;
@@ -208,6 +210,70 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManage
 	return { imagePoint, colorPoint };
 }
 
+void drawImage(glm::vec2 imgSize, std::vector<glm::vec2> imagePoints, std::vector<glm::vec3> imageColors,int angleDegree,bool saveImage , bool displayImage) {
+	// create image
+	int imageWidth = 600;
+	int imageHeight = 400;
+	CImg<unsigned char> img(imgSize.x, imgSize.y, 1, 3);
+	img.fill(0);
+
+
+	// draw pixels found in ray intersection
+	for (int i = 0; i < imagePoints.size(); i++) {
+		unsigned char color[] = { 0,0,0 };
+		color[0] = imageColors[i].x;
+		color[1] = imageColors[i].y;
+		color[2] = imageColors[i].z;
+		img.draw_point(imagePoints[i].x, imagePoints[i].y, color);
+	}
+
+	unsigned char lightBlue[] = { 173, 216, 230 }; // RGB values for light blue
+
+	// Iterate through all the pixels
+	cimg_forXY(img, x, y) {
+		// Check if the pixel is black (all channels are 0)
+		if (img(x, y, 0, 0) == 0 && img(x, y, 0, 1) == 0 && img(x, y, 0, 2) == 0) {
+			// Change the pixel to light blue
+			img(x, y, 0, 0) = lightBlue[0]; // Red channel
+			img(x, y, 0, 1) = lightBlue[1]; // Green channel
+			img(x, y, 0, 2) = lightBlue[2]; // Blue channel
+		}
+	}
+	std::string imgName = "images/generation/output";
+	imgName += std::to_string(static_cast<int>(angleDegree));
+	imgName += ".bmp";
+
+	if (saveImage == true) {
+		img.save_bmp(imgName.c_str()); // Use c_str() to get a const char* from std::string
+	}
+	if (displayImage == true) {
+		img.display("Simple Raytracer by Leon Lang");
+	}
+}
+
+
+ImageData sendRaysAndIntersectPointsColors(Ray& ray, const glm::vec2& imageSize, const glm::vec4& lightPos, ObjectManager objManager) {
+	glm::vec2 rayXY = glm::vec2(ray.direction.x, ray.direction.y);
+	ImageData imageData;
+
+	for (int i = -imageSize.x / 2; i < imageSize.x / 2; ++i) {
+		for (int j = -imageSize.y / 2; j < imageSize.y / 2; ++j) {
+			ray.direction.x = i + rayXY.x;
+			ray.direction.y = j + rayXY.y;
+
+			std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, objManager, i + imageSize.x / 2, j + imageSize.y / 2, lightPos);
+			imageData.imagePoints.push_back(points.first);
+			imageData.imageColors.push_back(points.second);
+		}
+	}
+
+	return imageData;
+}
+
+
+
+
+
 int main()
 {
 	for (float angleDegree = 0; angleDegree < 360; angleDegree = angleDegree + 10) {
@@ -225,15 +291,7 @@ int main()
 		triangle.pointTwo = glm::vec4(-5.0f, 0.0f, 0.0f, 1.0f);
 		triangle.pointThree = glm::vec4(0.0f, 8.0f, 0.0f, 1.0f);
 
-		// create a ray 
-		Ray ray(glm::vec3(0.0f, 0.0f, 400.0f));
 
-
-		// create image
-		int imageWidth = 600;
-		int imageHeight = 400;
-		CImg<unsigned char> img(imageWidth, imageHeight, 1, 3);
-		img.fill(0);
 
 		// create viewMatrix
 		// glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -100.f, circleZ), glm::vec3(glm::radians(50.f), glm::radians(angleDegree + 90.f), 0.f));
@@ -280,52 +338,12 @@ int main()
 		objManager.transformTriangles("cube3.obj", glm::inverse(viewMatrix));
 
 
-
-		// send rays out based from the center of the ray origin and intersect them with triangles
-		std::vector<glm::vec2> imagePoints;
-		std::vector<glm::vec3> imageColors;
+		// Draw Image
+		Ray ray(glm::vec3(0.0f, 0.0f, 400.0f));
+		glm::vec2 imageSize(600, 400);
 		glm::vec4 lightPos(200.0f, -300.0f, -1000.4f, 1.0f);
-		glm::vec2 rayXY = glm::vec2(ray.direction.x, ray.direction.y);
-		// lightPos = viewSpaceTransformation(angleDegree) * lightPos;
-		for (int i = -imageWidth / 2; i < imageWidth / 2; ++i)
-		{
-			for (int j = -imageHeight / 2; j < imageHeight / 2; ++j)
-			{
-				ray.direction.x = i + rayXY.x;
-				ray.direction.y = j + rayXY.y;
-
-				std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, objManager, i + imageWidth / 2, j + imageHeight / 2, lightPos);
-				imagePoints.push_back(points.first);
-				imageColors.push_back(points.second);
-			}
-		}
-
-		// draw pixels found in ray intersection
-		for (int i = 0; i < imagePoints.size(); i++) {
-			unsigned char color[] = { 0,0,0 };
-			color[0] = imageColors[i].x;
-			color[1] = imageColors[i].y;
-			color[2] = imageColors[i].z;
-			img.draw_point(imagePoints[i].x, imagePoints[i].y, color);
-		}
-
-		unsigned char lightBlue[] = { 173, 216, 230 }; // RGB values for light blue
-
-		// Iterate through all the pixels
-		cimg_forXY(img, x, y) {
-			// Check if the pixel is black (all channels are 0)
-			if (img(x, y, 0, 0) == 0 && img(x, y, 0, 1) == 0 && img(x, y, 0, 2) == 0) {
-				// Change the pixel to light blue
-				img(x, y, 0, 0) = lightBlue[0]; // Red channel
-				img(x, y, 0, 1) = lightBlue[1]; // Green channel
-				img(x, y, 0, 2) = lightBlue[2]; // Blue channel
-			}
-		}
-		std::string imgName = "images/generation/output";
-		imgName += std::to_string(static_cast<int>(angleDegree));
-		imgName += ".bmp";
-		img.save_bmp(imgName.c_str()); // Use c_str() to get a const char* from std::string
-		// img.display("Simple Raytracer by Leon Lang");
+		ImageData points = sendRaysAndIntersectPointsColors(ray, imageSize, lightPos, objManager);
+		drawImage(imageSize, points.imagePoints, points.imageColors, angleDegree,true, true);
 
 	}
 }
