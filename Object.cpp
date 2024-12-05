@@ -26,7 +26,7 @@ void ObjectManager::loadObjFile(const std::string& objFilename) {
     std::string inputFile = objFilename;
     tinyobj::ObjReader reader;
 
-    objColors[objFilename] = glm::vec3(1.f,0.f,1.f);
+    objColors[objFilename] = glm::vec3(1.f,0.f,0.f);
 
     if (!reader.ParseFromFile(inputFile)) {
         if (!reader.Error().empty()) {

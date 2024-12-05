@@ -124,9 +124,9 @@ glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::
 	glm::vec3 barycentricCoords = calculateBarycentricCoords(triangle, intersectionPoint);
 
 	// Interpolate the normal at the intersection point using barycentric coordinates
-	// glm::vec3 n = interpolateNormal(triangle, barycentricCoords); // normal
+	glm::vec3 n = interpolateNormal(triangle, barycentricCoords); // normal
 	// test with normal
-	glm::vec3 n = calculateTriangleNormal(triangle);
+	// glm::vec3 n = calculateTriangleNormal(triangle);
 	// Calculate the direction vector from the intersection point to the light source
 	glm::vec3 l = glm::normalize(lightPos - intersectionPoint); // lightDirection
 
@@ -278,7 +278,7 @@ ImageData sendRaysAndIntersectPointsColors(const glm::vec2& imageSize, const glm
 int main()
 {
 	// save images at different degrees based on camera
-	for (float angleDegree = 0; angleDegree < 360; angleDegree = angleDegree + 10) {
+	for (float angleDegree = 0; angleDegree < 360; angleDegree = angleDegree + 1000) {
 
 		// Create an ObjectManager instance 
 		ObjectManager objManager;
@@ -290,6 +290,7 @@ int main()
 		float circleZ = radius * std::sin(radians); // Calculate z coordinate on the circle
 
 		// create a triangle
+		/*
 		Triangle triangle;
 		triangle.pointOne = glm::vec4(5.0f, 0.0f, 0.0f, 1.0f);
 		triangle.pointTwo = glm::vec4(-5.0f, 0.0f, 0.0f, 1.0f);
@@ -299,7 +300,7 @@ int main()
 		objManager.objTriangles["triangle.obj"] = triangles;
 		objManager.objColors["triangle.obj"] = glm::vec3(1.f, 0.f, 0.f);
 		objManager.transformTriangles("triangle.obj", Transformation::changeObjPosition(glm::vec3(0.f, 0.f, 25.f)));
-
+		*/
 
 		// create viewMatrix
 		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, 0.f, circleZ), glm::vec3(0.f, glm::radians(angleDegree + 90.f), 0.f));
@@ -307,10 +308,10 @@ int main()
 
 
 		// Load Sphere Triangles and transform them
-		/*
+		
 		objManager.loadObjFile("sphere.obj"); 
-		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(0.f, 5.f, 30.f)));
-		*/
+		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(0.f, 0.f, 10.f)));
+		
 
 		// Load Cube Triangles and scale it
 		/*
