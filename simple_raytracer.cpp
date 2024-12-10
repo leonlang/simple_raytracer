@@ -124,9 +124,9 @@ glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::
 	glm::vec3 barycentricCoords = calculateBarycentricCoords(triangle, intersectionPoint);
 
 	// Interpolate the normal at the intersection point using barycentric coordinates
-	glm::vec3 n = interpolateNormal(triangle, barycentricCoords); // normal
+	// glm::vec3 n = interpolateNormal(triangle, barycentricCoords); // normal
 	// test with normal
-	// glm::vec3 n = calculateTriangleNormal(triangle);
+	glm::vec3 n = calculateTriangleNormal(triangle);
 	// Calculate the direction vector from the intersection point to the light source
 	glm::vec3 l = glm::normalize(lightPos - intersectionPoint); // lightDirection
 
@@ -164,47 +164,99 @@ glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::
 	return diffuse + specular + ambient;
 }
 
+
+bool intersectRayAabb(const glm::vec3& direction, const glm::vec3& minBox, const glm::vec3& maxBox) {
+	// Calculate the t values for each pair of planes
+
+	// origin is always at 0 because we are at view Space so we don't need to include it in 
+	// the calculations
+
+	// x-slab intersection t
+	float minXT = minBox.x / direction.x;
+	float maxXT = maxBox.x / direction.x;
+	if (minXT > maxXT) {
+		std::swap(minXT, maxXT);
+	}
+
+	float minYT = minBox.y / direction.y;
+	float maxYT = maxBox.y / direction.y;
+	if (minYT > maxYT) {
+		std::swap(minYT, maxYT);
+	}
+
+	// Check if the intervals overlap
+	if (maxXT < minYT || maxYT < minXT) {
+		return false;
+	}
+
+	// Now do it for z axis
+	if (minYT > minXT) {
+		minXT = minYT;
+	}
+	if (maxYT < maxXT) {
+		maxXT = maxYT;
+	}
+
+	float minZT = minBox.z / direction.z;
+	float maxZT = maxBox.z / direction.z;
+
+	if (minZT > maxZT) {
+		std::swap(minZT, maxZT);
+	}
+
+	if ((minXT > maxZT) || (minZT > maxXT)) {
+		return false;
+	}
+
+	return true;
+}
+
 std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManager, int pointX, int pointY, glm::vec3 lightPos) {
+
+
 	glm::vec3 colorPoint(0, 0, 0);
 	float distanceComparison = INFINITY;
 	for (const auto& pair : objManager.objTriangles) {
+
 		const std::string& objFilename = pair.first;
 		const std::vector<Triangle>& triangles = pair.second;
+		
+		// Do AABB Test before actual Intersection Test
+		if (intersectRayAabb(ray.direction, objManager.minBox[objFilename], objManager.maxBox[objFilename])) {
 
+			for (int k = 0; k < triangles.size(); k++) {
+				float fDistance = rayTriangleIntersection(&ray, &triangles[k]);
+				if (fDistance != -INFINITY) {
+					if (fDistance < distanceComparison) {
+						distanceComparison = fDistance;
+						// Initialize Phong Illumination with a Red Object
+							glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
+							glm::vec3 objectColor(1.0f, 0.0f, 0.0f); // Red object
+							float ambientStrength = 0.2f;
+							float specularStrength = 0.5f;
+							float shininess = 15.0f;
+							glm::vec3 color = phongIllumination(triangles[k], ray, lightPos, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
+						color = glm::clamp(color, 0.0f, 1.0f);
+						colorPoint.x = int((color.x * 255));
+						colorPoint.y = int((color.y * 255));
+						colorPoint.z = int((color.z * 255));
 
-		for (int k = 0; k < triangles.size(); k++) {
-			float fDistance = rayTriangleIntersection(&ray, &triangles[k]);
-			if (fDistance != -INFINITY) {
-				if (fDistance < distanceComparison) {
-					distanceComparison = fDistance;
-					// Initialize Phong Illumination with a Red Object
-					glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
-					glm::vec3 objectColor(1.0f, 0.0f, 0.0f); // Red object
-					float ambientStrength = 0.2f;
-					float specularStrength = 0.5f;
-					float shininess = 15.0f;
-					glm::vec3 color = phongIllumination(triangles[k], ray, lightPos, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
-					color = glm::clamp(color, 0.0f, 1.0f);
-					colorPoint.x = int((color.x * 255));
-					colorPoint.y = int((color.y * 255));
-					colorPoint.z = int((color.z * 255));
-
-					/*
-					* Draw the Triangles based on the intersection distance
-					int iDistance = int(fDistance * 40);
-					glm::vec3 tempColor(iDistance * 8, iDistance *8, iDistance * 8);
-					glm::vec3 clampColorTest = glm::vec3(fDistance, fDistance, fDistance);
-					glm::vec3 clampedColor = glm::clamp(clampColorTest, 0.4f, 2.5f);
-					clampedColor.x = int((clampedColor.x * 255));
-					clampedColor.y = int((clampedColor.y * 255));
-					clampedColor.z = int((clampedColor.z * 255));
-					colorPoint = tempColor;
-					colorPoint = clampedColor;
-					*/
+						/*
+						* Draw the Triangles based on the intersection distance
+						int iDistance = int(fDistance * 40);
+						glm::vec3 tempColor(iDistance * 8, iDistance *8, iDistance * 8);
+						glm::vec3 clampColorTest = glm::vec3(fDistance, fDistance, fDistance);
+						glm::vec3 clampedColor = glm::clamp(clampColorTest, 0.4f, 2.5f);
+						clampedColor.x = int((clampedColor.x * 255));
+						clampedColor.y = int((clampedColor.y * 255));
+						clampedColor.z = int((clampedColor.z * 255));
+						colorPoint = tempColor;
+						colorPoint = clampedColor;
+						*/
+					}
 				}
 			}
 		}
-
 	}
 	glm::vec2 imagePoint(pointX, pointY);
 	return { imagePoint, colorPoint };
@@ -252,19 +304,25 @@ void drawImage(glm::vec2 imgSize, std::vector<glm::vec2> imagePoints, std::vecto
 }
 
 
+
+
 ImageData sendRaysAndIntersectPointsColors(const glm::vec2& imageSize, const glm::vec4& lightPos, ObjectManager objManager) {
 	Ray ray(glm::vec3(0.0f, 0.0f, 400.0f));
 	glm::vec2 rayXY = glm::vec2(ray.direction.x, ray.direction.y);
 	ImageData imageData;
 
+	// std::cout << "Intersection: " << intersectRayAabb(glm::vec2(0, 0), glm::vec2(6, 3), glm::vec2(300, 300), glm::vec2(400, 400)) << " Intersects";
 	for (int i = -imageSize.x / 2; i < imageSize.x / 2; ++i) {
 		for (int j = -imageSize.y / 2; j < imageSize.y / 2; ++j) {
 			ray.direction.x = i + rayXY.x;
 			ray.direction.y = j + rayXY.y;
-
+			
 			std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, objManager, i + imageSize.x / 2, j + imageSize.y / 2, lightPos);
-			imageData.imagePoints.push_back(points.first);
-			imageData.imageColors.push_back(points.second);
+			if (points.second != glm::vec3(0, 0, 0)) {
+				imageData.imagePoints.push_back(points.first);
+				imageData.imageColors.push_back(points.second);
+			}
+			
 		}
 	}
 
@@ -308,13 +366,38 @@ int main()
 
 
 		// Load Sphere Triangles and transform them
-		
+		/*
 		objManager.loadObjFile("sphere.obj"); 
-		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(0.f, 0.f, 10.f)));
+		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(0.f, 6.f, 30.f)));
 		
+		// Load 5 more Spheres for time Testing
+		objManager.objTriangles["sphere1.obj"] = objManager.getTriangles("sphere.obj");
+		objManager.objColors["sphere1.obj"] = glm::vec3(1.f, 0.f, 0.f);
+		objManager.transformTriangles("sphere1.obj", Transformation::changeObjPosition(glm::vec3(6.f, 0.f, 0.f)));
+		
+		// Load 8 more Spheres for time Testing
+		objManager.objTriangles["sphere2.obj"] = objManager.getTriangles("sphere.obj");
+		objManager.objColors["sphere2.obj"] = glm::vec3(1.f, 0.f, 0.f);
+		objManager.transformTriangles("sphere2.obj", Transformation::changeObjPosition(glm::vec3(-6.f, 0.f, 0.f)));
+		
+		// Load 8 more Spheres for time Testing
+		objManager.objTriangles["sphere3.obj"] = objManager.getTriangles("sphere.obj");
+		objManager.objColors["sphere3.obj"] = glm::vec3(1.f, 0.f, 0.f);
+		objManager.transformTriangles("sphere3.obj", Transformation::changeObjPosition(glm::vec3(0.f, -12.f, 0.f)));
+
+		// Load 8 more Spheres for time Testing
+		objManager.objTriangles["sphere4.obj"] = objManager.getTriangles("sphere.obj");
+		objManager.objColors["sphere4.obj"] = glm::vec3(1.f, 0.f, 0.f);
+		objManager.transformTriangles("sphere4.obj", Transformation::changeObjPosition(glm::vec3(6.f, -12.f, 0.f)));
+
+		// Load 8 more Spheres for time Testing
+		objManager.objTriangles["sphere5.obj"] = objManager.getTriangles("sphere.obj");
+		objManager.objColors["sphere5.obj"] = glm::vec3(1.f, 0.f, 0.f);
+		objManager.transformTriangles("sphere5.obj", Transformation::changeObjPosition(glm::vec3(-6.f, -12.f, 0.f)));
+		*/
 
 		// Load Cube Triangles and scale it
-		/*
+		
 		objManager.loadObjFile("cube.obj");
 		objManager.setColor("cube.obj", glm::vec3(1.f, 1.f, 0.f));
 		objManager.transformTriangles("cube.obj", Transformation::scaleObj(10.0f, 10.0f, 10.0f));
@@ -340,12 +423,24 @@ int main()
 		objManager.transformTriangles("cube1.obj", glm::inverse(viewMatrix));
 		objManager.transformTriangles("cube2.obj", glm::inverse(viewMatrix));
 		objManager.transformTriangles("cube3.obj", glm::inverse(viewMatrix));
-		*/
+		
 
 		// Draw Image
 		glm::vec2 imageSize(600, 400);
 		glm::vec4 lightPos(200.0f, -300.0f, -1000.4f, 1.0f);
+
+		// Start the timer 
+		auto start = std::chrono::high_resolution_clock::now();
+
 		ImageData points = sendRaysAndIntersectPointsColors(imageSize, lightPos, objManager);
+
+
+		// End the timer 
+		auto end = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = end - start;
+		// Print the time taken 
+		std::cout << "Time taken for Intersection: " << elapsed.count() << " seconds " << std::endl;
+
 		drawImage(imageSize, points.imagePoints, points.imageColors, angleDegree,true, true);
 
 	}

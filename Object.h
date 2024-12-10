@@ -33,13 +33,14 @@ class Ray {
 public:
     glm::vec3 origin;
     glm::vec3 direction;
-
     // Constructor
     Ray(glm::vec3 d);
 };
 
 class ObjectManager {
 public:
+    std::unordered_map<std::string, glm::vec3> minBox;
+    std::unordered_map<std::string, glm::vec3> maxBox;
     std::unordered_map<std::string, std::vector<Triangle>> objTriangles;
     // define object color
     std::unordered_map<std::string, glm::vec3> objColors;

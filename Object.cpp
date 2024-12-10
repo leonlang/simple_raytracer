@@ -83,14 +83,32 @@ void ObjectManager::setTriangles(const std::string& objFilename, const std::vect
     objTriangles[objFilename] = triangles; 
 }
 
-void ObjectManager::transformTriangles(const std::string& objFilename, const glm::mat4& matrix) { 
-    std::vector<Triangle>& triangles = objTriangles[objFilename]; 
-    for (Triangle& t : triangles) { 
+void ObjectManager::transformTriangles(const std::string& objFilename, const glm::mat4& matrix) {
+    std::vector<Triangle>& triangles = objTriangles[objFilename];
+
+    minBox[objFilename] = glm::vec3(FLT_MAX, FLT_MAX, FLT_MAX);
+    maxBox[objFilename] = glm::vec3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+
+    for (Triangle& t : triangles) {
         t.pointOne = matrix * t.pointOne;
         t.pointTwo = matrix * t.pointTwo;
-        t.pointThree = matrix * t.pointThree; 
-    } 
+        t.pointThree = matrix * t.pointThree;
+
+        // Update min and max values for each transformed point
+        glm::vec3 pointOne(t.pointOne);
+        glm::vec3 pointTwo(t.pointTwo);
+        glm::vec3 pointThree(t.pointThree);
+
+       minBox[objFilename] = glm::min(minBox[objFilename], pointOne);
+       minBox[objFilename] = glm::min(minBox[objFilename], pointTwo);
+       minBox[objFilename] = glm::min(minBox[objFilename], pointThree);
+
+       maxBox[objFilename] = glm::max(maxBox[objFilename], pointOne);
+       maxBox[objFilename] = glm::max(maxBox[objFilename], pointTwo);
+       maxBox[objFilename] = glm::max(maxBox[objFilename], pointThree);
+    }
 }
+
 
 void ObjectManager::setColor(const std::string& objFilename, const glm::vec3& color) {
     objColors[objFilename] = color; 
