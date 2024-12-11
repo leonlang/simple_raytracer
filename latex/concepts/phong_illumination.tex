@@ -1,0 +1,52 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+
+\begin{document}
+	
+	\section*{Phong Illumination Model}
+
+	
+	\subsection*{Diffuse Reflection}
+	\begin{itemize}
+		\item Diffuse reflection is based on Lambert's cosine law, which states that the intensity of light is proportional to the cosine of the angle between the light direction \textbf{l} and the surface normal \textbf{n}.
+		\item The intensity of light is higher if the angle is sharper.
+		\item The dot product $\bm{n} \cdot \bm{l}$ represents this cosine value, and I use max to ensure it is non-negative.
+		\item $\bm{p} \cdot \bm{L}_{\text{light}}$ represents the final color of the object with light.
+	\end{itemize}
+	\begin{align*}
+		\bm{diffuse} &= r_{\text{View}} \cdot \bm{p} \cdot \bm{L}_{\text{light}} \cdot \max(\bm{n} \cdot \bm{l}, 0.0)
+	\end{align*}
+	
+	\subsection*{Ambient Reflection}
+	\begin{itemize}
+		\item Ambient reflection represents the constant illumination of the object by the environment.
+		\item It is usually a small constant value added to ensure that objects are visible even when not directly lit.
+		\item Higher ambient strength means the entire object brightens up more by the same amount.
+	\end{itemize}
+	\begin{align*}
+		\bm{ambient} &= \frac{1}{\pi} \cdot \textit{ambientStrength} \cdot \bm{p} \cdot \bm{L}_{\text{light}}
+	\end{align*}
+	
+	\subsection*{Specular Reflection}
+	\begin{itemize}
+		\item Specular reflection represents the mirror-like reflection of light sources on shiny surfaces.
+		\item It does not use the object color ($\bm{p}$) because specular highlights are typically the color of the light source.
+		\item Higher shininess ($m$) means a smaller specular highlight.
+	\end{itemize}
+	\begin{itemize}
+		\item It is based on the dot product between the view direction \textbf{v} and the reflection direction \textbf{r}, raised to the power of the shininess factor ($m$).
+		\item $s$ is the specular strength. Smaller specular strength means less intensity.
+	\end{itemize}
+	\begin{align*}
+		\bm{specular} &= \bm{L}_{\text{light}} \cdot s \cdot \max(\bm{n} \cdot \bm{l}, 0.0) \cdot \left(\max(\bm{r} \cdot \bm{v}, 0.0)\right)^m
+	\end{align*}
+	
+	\subsection*{Final Color}
+	\text{Combine the three components to get the final color:}
+	\begin{align*}
+		\bm{finalColor} &= \bm{diffuse} + \bm{specular} + \bm{ambient}
+	\end{align*}
+	
+\end{document}

@@ -7,6 +7,13 @@
 *.lo
 *.o
 
+# Ignore all .synctex files
+**/*.synctex.gz
+
+# Ignore all .aux files
+**/*.aux
+
+
 # Precompiled Headers
 *.gch
 *.pch
