@@ -1,0 +1,56 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+
+\begin{document}
+	
+	\title{AABB Intersection (Slab Method)}
+	\author{Leon Lang}
+	\maketitle
+	
+	\section{Einführung}
+	Die Axis-Aligned Bounding Box (AABB) Intersection Methode, auch bekannt als Slab-Methode, ist eine effiziente Technik zur Bestimmung der Schnittpunkte eines Strahls mit einer AABB. Diese Methode basiert auf der Berechnung der Schnittpunkte des Strahls mit den "Slabs" oder Ebenen, die die AABB definieren.
+	
+	\section{Algorithmus}
+	Wir gehen davon aus, dass der Strahl seinen Ursprung bei (0,0,0) besitzt
+	Der Algorithmus zur Bestimmung der Schnittpunkte eines Strahls mit einer AABB kann wie folgt beschrieben werden:
+	
+	\subsection{Berechnung der Schnittpunkte mit den x-Ebenen}
+	\begin{equation}
+		t_{\text{minX}} = \frac{M_{\text{minX}}}{\mathbf{d}_x}, \quad t_{\text{maxX}} = \frac{M_{\text{maxX}}}{\mathbf{d}_x}
+	\end{equation}
+	Falls \( t_{\text{minX}} > t_{\text{maxX}} \), werden die Werte vertauscht.
+	
+	\subsection{Berechnung der Schnittpunkte mit den y-Ebenen}
+	\begin{equation}
+		t_{\text{minY}} = \frac{M_{\text{minY}}}{\mathbf{d}_y}, \quad t_{\text{maxY}} = \frac{M_{\text{maxY}}}{\mathbf{d}_y}
+	\end{equation}
+	Falls \( t_{\text{minY}} > t_{\text{maxY}} \), werden die Werte vertauscht.
+	
+	\subsection{Überprüfung der Überlappung der Intervalle}
+	\begin{equation}
+		\text{if } t_{\text{maxX}} < t_{\text{minY}} \text{ or } t_{\text{maxY}} < t_{\text{minX}} \text{ then return false}
+	\end{equation}
+	
+	\subsection{Aktualisierung der Intervalle}
+	\begin{equation}
+		t_{\text{minX}} = \max(t_{\text{minX}}, t_{\text{minY}}), \quad t_{\text{maxX}} = \min(t_{\text{maxX}}, t_{\text{maxY}})
+	\end{equation}
+	
+	\subsection{Berechnung der Schnittpunkte mit den z-Ebenen}
+	\begin{equation}
+		t_{\text{minZ}} = \frac{M_{\text{minZ}}}{\mathbf{d}_z}, \quad t_{\text{maxZ}} = \frac{M_{\text{maxZ}}}{\mathbf{d}_z}
+	\end{equation}
+	Falls \( t_{\text{minZ}} > t_{\text{maxZ}} \), werden die Werte vertauscht.
+	
+	\subsection{Endgültige Überprüfung der Intervalle}
+	\begin{equation}
+		\text{Wenn } t_{\text{minX}} > t_{\text{maxZ}} \text{ oder } t_{\text{minZ}} > t_{\text{maxX}} \text{ ist kein Schnittpunkt vorhanden}
+	\end{equation}
+	
+	Falls alle Überprüfungen erfolgreich sind, wissen wir, dass der Strahl die AABB schneidet.
+	
+	\section{Fazit}
+	Die Slab-Methode ist eine effiziente und einfache Technik zur Bestimmung der Schnittpunkte eines Strahls mit einer AABB. Durch die Berechnung der Schnittpunkte mit den einzelnen Ebenen und die Überprüfung der Intervalle kann schnell festgestellt werden, ob ein Schnittpunkt vorliegt.
+	
+\end{document}

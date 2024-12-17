@@ -226,6 +226,13 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManage
 
 			for (int k = 0; k < triangles.size(); k++) {
 				float fDistance = rayTriangleIntersection(&ray, &triangles[k]);
+
+				// Code for Shadow
+
+
+
+
+
 				if (fDistance != -INFINITY) {
 					if (fDistance < distanceComparison) {
 						distanceComparison = fDistance;
@@ -396,6 +403,20 @@ int main()
 		objManager.transformTriangles("sphere5.obj", Transformation::changeObjPosition(glm::vec3(-6.f, -12.f, 0.f)));
 		*/
 
+		objManager.loadObjFile("sphere.obj");
+		objManager.transformTriangles("sphere.obj", Transformation::scaleObj(4.0f, 4.0f, 4.0f));
+		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(30.f, -5.f, 10.f)));
+		objManager.transformTriangles("sphere.obj", glm::inverse(viewMatrix));
+
+		objManager.loadObjFile("cube.obj");
+		objManager.setColor("cube.obj", glm::vec3(0.f, 1.f, 0.f));
+		objManager.transformTriangles("cube.obj", Transformation::scaleObj(70.0f, 70.0f, 70.0f));
+		objManager.transformTriangles("cube.obj", Transformation::rotateObjZ(-10.f));
+		objManager.transformTriangles("cube.obj", Transformation::changeObjPosition(glm::vec3(0.f, 85.f, 0.f)));
+		objManager.transformTriangles("cube.obj", glm::inverse(viewMatrix));
+
+
+		/*
 		// Load Cube Triangles and scale it
 		
 		objManager.loadObjFile("cube.obj");
@@ -423,7 +444,7 @@ int main()
 		objManager.transformTriangles("cube1.obj", glm::inverse(viewMatrix));
 		objManager.transformTriangles("cube2.obj", glm::inverse(viewMatrix));
 		objManager.transformTriangles("cube3.obj", glm::inverse(viewMatrix));
-		
+		*/
 
 		// Draw Image
 		glm::vec2 imageSize(600, 400);
