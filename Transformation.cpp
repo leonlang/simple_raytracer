@@ -16,6 +16,7 @@ glm::mat4 Transformation::rotateObjX(float degree) {
     matrix[1][1] = std::cos(degree);
     matrix[1][2] = -std::sin(degree);
     matrix[2][1] = std::sin(degree);
+    matrix[2][1] = std::sin(degree);
     matrix[2][2] = std::cos(degree);
     matrix[3][3] = 1.0f;
     return matrix;
