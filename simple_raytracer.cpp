@@ -211,17 +211,67 @@ bool intersectRayAabb(const glm::vec3& direction, const glm::vec3& minBox, const
 	return true;
 }
 
+bool intersectRayAabbNoOrigin(Ray ray, const glm::vec3& minBox, const glm::vec3& maxBox) {
+	// Calculate the t values for each pair of planes
+
+	// origin is always at 0 because we are at view Space so we don't need to include it in 
+	// the calculations
+
+	// x-slab intersection t
+	float minXT = (minBox.x - ray.origin.x) / ray.direction.x;
+	float maxXT = (maxBox.x - ray.origin.x) / ray.direction.x;
+	if (minXT > maxXT) {
+		std::swap(minXT, maxXT);
+	}
+
+	float minYT = (minBox.y - ray.origin.y) / ray.direction.y;
+	float maxYT = (maxBox.y / - ray.origin.y) / ray.direction.y;
+	if (minYT > maxYT) {
+		std::swap(minYT, maxYT);
+	}
+
+	// Check if the intervals overlap
+	if (maxXT < minYT || maxYT < minXT) {
+		return false;
+	}
+
+	// Now do it for z axis
+	if (minYT > minXT) {
+		minXT = minYT;
+	}
+	if (maxYT < maxXT) {
+		maxXT = maxYT;
+	}
+
+	float minZT = (minBox.z - ray.origin.z) / ray.direction.z;
+	float maxZT = (maxBox.z - ray.origin.z) / ray.direction.z;
+
+	if (minZT > maxZT) {
+		std::swap(minZT, maxZT);
+	}
+
+	if ((minXT > maxZT) || (minZT > maxXT)) {
+		return false;
+	}
+
+	return true;
+}
+
 bool shadowIntersection(ObjectManager objManager, std::string currentObjFilename, glm::vec3 lightPos, float fDistance, Ray ray) {
 	for (const auto& pairShadow : objManager.objTriangles) {
 		const std::string& shadowObjFilename = pairShadow.first;
 		const std::vector<Triangle>& shadowTriangles = pairShadow.second;
-		if (shadowObjFilename != currentObjFilename) {
-			for (int j = 0; j < shadowTriangles.size(); j++) {
-				Ray shadowRay(lightPos - ray.direction * fDistance);
-				shadowRay.origin = ray.direction * fDistance;
-				float shadowDistance = rayTriangleIntersection(&shadowRay, &shadowTriangles[j]);
-				if (shadowDistance != -INFINITY) {
-					return true;
+		Ray shadowRay(lightPos - ray.direction * fDistance);
+		shadowRay.origin = ray.direction * fDistance;
+		if (intersectRayAabbNoOrigin(shadowRay, objManager.minBox[shadowObjFilename], objManager.maxBox[shadowObjFilename])) {
+
+			if (shadowObjFilename != currentObjFilename) {
+				for (int j = 0; j < shadowTriangles.size(); j++) {
+
+					float shadowDistance = rayTriangleIntersection(&shadowRay, &shadowTriangles[j]);
+					if (shadowDistance != -INFINITY) {
+						return true;
+					}
 				}
 			}
 		}
