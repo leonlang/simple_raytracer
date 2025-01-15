@@ -155,11 +155,14 @@ void ObjectManager::splitTrianglesForBox(Node* root) {
         std::sort(root->triangles.begin(), root->triangles.end(), compareZPointsOfTriangle);
     }
 
+    /*for (Triangle& t : root->triangles) {
+        std::cout << "tX" << t.pointOne.x << std::endl;
+    }*/
+
     trianglesLeftSide.insert(trianglesLeftSide.end(), root->triangles.begin(), root->triangles.begin() + triangleSize/2);
     trianglesRightSide.insert(trianglesRightSide.end(), root->triangles.begin() + triangleSize / 2, root->triangles.end());
     std::tie(minBoxLeft, maxBoxLeft) = calculateBoundingBoxes(trianglesLeftSide);
     std::tie(minBoxRight, maxBoxRight) = calculateBoundingBoxes(trianglesRightSide);
-
     root->left = new Node(trianglesLeftSide, minBoxLeft, maxBoxLeft);
     root->right = new Node(trianglesRightSide, minBoxRight, maxBoxRight);
     // Build Binary Tree Recursively until size is <= triangleSizeStop
