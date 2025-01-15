@@ -105,7 +105,7 @@ glm::vec3 interpolateNormal(const Triangle& triangle, const glm::vec3& barycentr
 	);
 }
 
-glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::vec3& lightPos, const glm::vec3& lightColor, const glm::vec3& objectColor, float ambientStrength, float specularStrength, float shininess, float distance) {
+glm::vec3 phongIllumination(const Triangle* triangle, const Ray* ray, const glm::vec3& lightPos, const glm::vec3& lightColor, const glm::vec3& objectColor, float ambientStrength, float specularStrength, float shininess, float distance) {
 	// Phong illumination model
 
 	// objectColor = object color
@@ -118,15 +118,15 @@ glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::
 	constexpr float rView = 1.0f / glm::pi<float>();
 
 	// Calculate the intersection point of the ray with the triangle
-	glm::vec3 intersectionPoint = ray.origin + distance * ray.direction;
+	glm::vec3 intersectionPoint = ray->origin + distance * ray->direction;
 
 	// Calculate barycentric coordinates for the intersection point within the triangle
-	glm::vec3 barycentricCoords = calculateBarycentricCoords(triangle, intersectionPoint);
+	glm::vec3 barycentricCoords = calculateBarycentricCoords(*triangle, intersectionPoint);
 
 	// Interpolate the normal at the intersection point using barycentric coordinates
 	// glm::vec3 n = interpolateNormal(triangle, barycentricCoords); // normal
 	// test with normal
-	glm::vec3 n = calculateTriangleNormal(triangle);
+	glm::vec3 n = calculateTriangleNormal(*triangle);
 	// Calculate the direction vector from the intersection point to the light source
 	glm::vec3 l = glm::normalize(lightPos - intersectionPoint); // lightDirection
 
@@ -152,7 +152,7 @@ glm::vec3 phongIllumination(const Triangle& triangle, const Ray ray, const glm::
 	// Specular reflection represents the mirror-like reflection of light sources on shiny surfaces
 	// It does not use the object color (objectColor) because specular highlights are typically the color of the light source
 	// Higher shininess means a smaller specular highlight
-	glm::vec3 v = glm::normalize(-ray.direction); // View Direction
+	glm::vec3 v = glm::normalize(-ray->direction); // View Direction
 	glm::vec3 r = glm::reflect(-l, n); // Reflect Direction
 
 	// The specular term is calculated using the Phong reflection model
@@ -353,15 +353,15 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager* objManag
 					lightPos2.z += 10;
 
 					bool isShadow = shadowIntersection(objManager, objFilename, lightPos, fDistance, ray);
-					glm::vec3 color1 = phongIllumination(trianglesBox[k], ray, lightPos, lightColor, objManager->getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
+					glm::vec3 color1 = phongIllumination(&trianglesBox[k], &ray, lightPos, lightColor, objManager->getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
 					if (isShadow) { color1 /= 5; }
 					
 					bool isShadow1 = shadowIntersection(objManager, objFilename, lightPos1, fDistance, ray);
-					glm::vec3 color2 = phongIllumination(trianglesBox[k], ray, lightPos1, lightColor, objManager->getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
+					glm::vec3 color2 = phongIllumination(&trianglesBox[k], &ray, lightPos1, lightColor, objManager->getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
 					if (isShadow1) { color2 /= 5; }
 
 					bool isShadow2 = shadowIntersection(objManager, objFilename, lightPos2, fDistance, ray);
-					glm::vec3 color3 = phongIllumination(trianglesBox[k], ray, lightPos2, lightColor, objManager->getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
+					glm::vec3 color3 = phongIllumination(&trianglesBox[k], &ray, lightPos2, lightColor, objManager->getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
 					if (isShadow2) { color3 /= 5; }
 					
 					// glm::vec3 color = color1;
