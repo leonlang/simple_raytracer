@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 #include "tiny_obj_loader.h"
+#include <algorithm>
 
 class Triangle {
 public:
@@ -37,11 +38,25 @@ public:
     Ray(glm::vec3 d);
 };
 
+struct Node {
+    glm::vec3 minBox;
+    glm::vec3 maxBox;
+    std::vector<Triangle> triangles;
+    Node* left;
+    Node* right;
+
+    // Constructor to initialize the node with a value
+    Node(std::vector<Triangle> triangleD, glm::vec3 minBoxD, glm::vec3 maxBoxD)
+        : triangles(triangleD), minBox(minBoxD), maxBox(maxBoxD), left(nullptr), right(nullptr) {
+    }
+};
+
 class ObjectManager {
 public:
     std::unordered_map<std::string, glm::vec3> minBox;
     std::unordered_map<std::string, glm::vec3> maxBox;
     std::unordered_map<std::string, std::vector<Triangle>> objTriangles;
+    std::unordered_map<std::string, Node*> boundingVolumeHierarchy;
     // define object color
     std::unordered_map<std::string, glm::vec3> objColors;
     // Method to load triangles from an OBJ file
@@ -55,7 +70,8 @@ public:
 
     // Method to transform triangles for a specific OBJ file 
     void transformTriangles(const std::string& objFilename, const glm::mat4& matrix);
-
+    void splitTrianglesForBox(Node* root);
+    void createBoundingHierarchy(const std::string& objFilename);
     // Method to set color for a specific OBJ file 
     void setColor(const std::string& objFilename, const glm::vec3& color);
     // Method to get color for a specific OBJ file 

@@ -323,7 +323,7 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManage
 						bool isShadow = shadowIntersection(objManager, objFilename, lightPos, fDistance, ray);
 						glm::vec3 color1 = phongIllumination(triangles[k], ray, lightPos, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
 						if (isShadow) { color1 /= 5; }
-						
+						/*
 						bool isShadow1 = shadowIntersection(objManager, objFilename, lightPos1, fDistance, ray);
 						glm::vec3 color2 = phongIllumination(triangles[k], ray, lightPos1, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
 						if (isShadow1) { color2 /= 5; }
@@ -331,27 +331,15 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManage
 						bool isShadow2 = shadowIntersection(objManager, objFilename, lightPos2, fDistance, ray);
 						glm::vec3 color3 = phongIllumination(triangles[k], ray, lightPos2, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
 						if (isShadow2) { color3 /= 5; }
-						
-						// glm::vec3 color = color1;
-						glm::vec3 color = color1 + color2 + color3;
+						*/
+						glm::vec3 color = color1;
+						// glm::vec3 color = color1 + color2 + color3;
 						// color = glm::clamp(color, 0.0f, 1.0f);
 						// color gets converted to always be between 0 and 1
 						color = color / (color + 0.4f);
 						colorPoint.x = int((color.x * 255));
 						colorPoint.y = int((color.y * 255));
 						colorPoint.z = int((color.z * 255));
-						/*
-						* Draw the Triangles based on the intersection distance
-						int iDistance = int(fDistance * 40);
-						glm::vec3 tempColor(iDistance * 8, iDistance *8, iDistance * 8);
-						glm::vec3 clampColorTest = glm::vec3(fDistance, fDistance, fDistance);
-						glm::vec3 clampedColor = glm::clamp(clampColorTest, 0.4f, 2.5f);
-						clampedColor.x = int((clampedColor.x * 255));
-						clampedColor.y = int((clampedColor.y * 255));
-						clampedColor.z = int((clampedColor.z * 255));
-						colorPoint = tempColor;
-						colorPoint = clampedColor;
-						*/
 					}
 				}
 			}
@@ -434,6 +422,7 @@ ImageData sendRaysAndIntersectPointsColors(const glm::vec2& imageSize, const glm
 
 int main()
 {
+
 	// save images at different degrees based on camera
 	for (float angleDegree = 0; angleDegree < 360; angleDegree = angleDegree + 10) {
 
@@ -497,11 +486,15 @@ int main()
 
 
 		
-		objManager.loadObjFile("sphere.obj");
-		objManager.transformTriangles("sphere.obj", Transformation::scaleObj(1.5f, 1.5f, 1.5f));
-		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(18.f, -40.f, 10.f)));
-		objManager.transformTriangles("sphere.obj", glm::inverse(viewMatrix));
-		
+		objManager.loadObjFile("bunny.obj");
+		objManager.transformTriangles("bunny.obj", Transformation::scaleObj(3.0f, 3.0f, 3.0f));
+		objManager.transformTriangles("bunny.obj", Transformation::rotateObjX(110));
+		objManager.transformTriangles("bunny.obj", Transformation::rotateObjY(90));
+
+		objManager.transformTriangles("bunny.obj", Transformation::changeObjPosition(glm::vec3(18.f, -38.f, 10.f)));
+		objManager.transformTriangles("bunny.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("bunny.obj");
+
 		objManager.loadObjFile("cube.obj");
 		objManager.objTriangles["cube1.obj"] = objManager.getTriangles("cube.obj");
 		objManager.setColor("cube.obj", glm::vec3(0.f, 1.f, 0.f));
@@ -510,14 +503,18 @@ int main()
 		// objManager.transformTriangles("cube.obj", Transformation::changeObjPosition(glm::vec3(0.f, 85.f, 0.f)));
 		objManager.transformTriangles("cube.obj", Transformation::changeObjPosition(glm::vec3(0.f, 10.f, 0.f)));
 		objManager.transformTriangles("cube.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("cube.obj");
+
 		
 		objManager.setColor("cube1.obj", glm::vec3(0.f, 0.f, 1.f));
 		objManager.transformTriangles("cube1.obj", Transformation::scaleObj(3.0f, 3.0f, 3.0f));
 		objManager.transformTriangles("cube1.obj", Transformation::changeObjPosition(glm::vec3(15.f, -38.f, -10.f)));
 		// objManager.transformTriangles("cube1.obj", Transformation::changeObjPosition(glm::vec3(50.f, 5.f, -20.f)));
 		objManager.transformTriangles("cube1.obj", glm::inverse(viewMatrix));
-		
+		objManager.createBoundingHierarchy("cube1.obj");
 
+		
+		// std::cout << "Size Bunny" << objManager.boundingVolumeHierarchy["bunny.obj"]->left->triangles.size() << "Size" << objManager.boundingVolumeHierarchy["cube1.obj"]->left->triangles.size();
 		 
 		/*
 		// Load Cube Triangles and scale it
@@ -571,7 +568,7 @@ int main()
 		// Print the time taken 
 		std::cout << "Time taken for Intersection: " << elapsed.count() << " seconds " << std::endl;
 
-		drawImage(imageSize, points.imagePoints, points.imageColors, angleDegree, true, false);
+		drawImage(imageSize, points.imagePoints, points.imageColors, angleDegree, true, true);
 
 	}
 }
