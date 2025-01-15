@@ -256,28 +256,53 @@ bool intersectRayAabbNoOrigin(Ray ray, const glm::vec3& minBox, const glm::vec3&
 
 	return true;
 }
+std::vector<Triangle> boundingBoxIntersection(Node* node, Ray ray) {
+	// If leaf node, just return its triangles.
+	if (!node->left && !node->right) {
+		return node->triangles;
+	}
+
+	// Only Collect Triangles if Ray and Box have intersection
+	if (!intersectRayAabbNoOrigin(ray, node->minBox, node->maxBox)) {
+		return {};
+	}
+
+	// Otherwise, collect all triangles from left and right.
+	std::vector<Triangle> leftTriangles = boundingBoxIntersection(node->left, ray);
+	std::vector<Triangle> rightTriangles = boundingBoxIntersection(node->right, ray);
+
+	// Merge them.
+	leftTriangles.insert(leftTriangles.end(),
+		rightTriangles.begin(),
+		rightTriangles.end());
+	return leftTriangles;
+}
 
 bool shadowIntersection(ObjectManager objManager, std::string currentObjFilename, glm::vec3 lightPos, float fDistance, Ray ray) {
 	for (const auto& pairShadow : objManager.objTriangles) {
 		const std::string& shadowObjFilename = pairShadow.first;
-		const std::vector<Triangle>& shadowTriangles = pairShadow.second;
+		// const std::vector<Triangle>& shadowTriangles = pairShadow.second;
 		Ray shadowRay(lightPos - ray.direction * fDistance);
 		shadowRay.origin = ray.direction * fDistance;
-		if (intersectRayAabbNoOrigin(shadowRay, objManager.minBox[shadowObjFilename], objManager.maxBox[shadowObjFilename])) {
+		const std::vector<Triangle>& trianglesBox = boundingBoxIntersection(objManager.boundingVolumeHierarchy[shadowObjFilename], shadowRay);
+
+		// if (intersectRayAabbNoOrigin(shadowRay, objManager.minBox[shadowObjFilename], objManager.maxBox[shadowObjFilename])) {
 
 			if (shadowObjFilename != currentObjFilename) {
-				for (int j = 0; j < shadowTriangles.size(); j++) {
+				for (int j = 0; j < trianglesBox.size(); j++) {
 
-					float shadowDistance = rayTriangleIntersection(&shadowRay, &shadowTriangles[j]);
+					float shadowDistance = rayTriangleIntersection(&shadowRay, &trianglesBox[j]);
 					if (shadowDistance != -INFINITY) {
 						return true;
-					}
+					// }
 				}
 			}
 		}
 	}
 	return false;
 }
+
+
 std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManager, int pointX, int pointY, glm::vec3 lightPos) {
 
 
@@ -286,61 +311,65 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager objManage
 	for (const auto& pair : objManager.objTriangles) {
 
 		const std::string& objFilename = pair.first;
-		const std::vector<Triangle>& triangles = pair.second;
-
-		// Do AABB Test before actual Intersection Test
+		// const std::vector<Triangle>& triangles = pair.second;
+		/*
+		// Old Intersection for Speed Testing Purposes with OneBox and goes through all Triangles in an object
 		if (intersectRayAabb(ray.direction, objManager.minBox[objFilename], objManager.maxBox[objFilename])) {
 
 			for (int k = 0; k < triangles.size(); k++) {
-				float fDistance = rayTriangleIntersection(&ray, &triangles[k]);
+			*/
+		const std::vector<Triangle>& trianglesBox = boundingBoxIntersection(objManager.boundingVolumeHierarchy[objFilename], ray);
+		for (int k = 0; k < trianglesBox.size(); k++) {
 
-				if (fDistance != -INFINITY) {
-					if (fDistance < distanceComparison) {
+			float fDistance = rayTriangleIntersection(&ray, &trianglesBox[k]);
 
-						distanceComparison = fDistance;
+			if (fDistance != -INFINITY) {
+				if (fDistance < distanceComparison) {
+
+					distanceComparison = fDistance;
 
 
-						// Initialize Phong Illumination with a Red Object
-						glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
-						glm::vec3 objectColor(1.0f, 0.0f, 0.0f); // Red object
-						float ambientStrength = 0.2f;
-						float specularStrength = 0.5f;
-						float shininess = 15.0f;
+					// Initialize Phong Illumination with a Red Object
+					glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
+					glm::vec3 objectColor(1.0f, 0.0f, 0.0f); // Red object
+					float ambientStrength = 0.2f;
+					float specularStrength = 0.5f;
+					float shininess = 15.0f;
 
-						// Code for many light Sources
+					// Code for many light Sources
 
-						glm::vec3 finalColor(0.f,0.f,0.f);
-						glm::vec3 lightPos1 = lightPos;
-						lightPos1.x += 10;
-						lightPos1.y += 10;
-						lightPos1.z += 10;
+					glm::vec3 finalColor(0.f, 0.f, 0.f);
+					glm::vec3 lightPos1 = lightPos;
+					lightPos1.x += 10;
+					lightPos1.y += 10;
+					lightPos1.z += 10;
 
-						glm::vec3 lightPos2 = lightPos1;
-						lightPos2.x += 10;
-						lightPos2.y += 10;
-						lightPos2.z += 10;
-				
-						bool isShadow = shadowIntersection(objManager, objFilename, lightPos, fDistance, ray);
-						glm::vec3 color1 = phongIllumination(triangles[k], ray, lightPos, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
-						if (isShadow) { color1 /= 5; }
-						/*
-						bool isShadow1 = shadowIntersection(objManager, objFilename, lightPos1, fDistance, ray);
-						glm::vec3 color2 = phongIllumination(triangles[k], ray, lightPos1, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
-						if (isShadow1) { color2 /= 5; }
+					glm::vec3 lightPos2 = lightPos1;
+					lightPos2.x += 10;
+					lightPos2.y += 10;
+					lightPos2.z += 10;
 
-						bool isShadow2 = shadowIntersection(objManager, objFilename, lightPos2, fDistance, ray);
-						glm::vec3 color3 = phongIllumination(triangles[k], ray, lightPos2, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
-						if (isShadow2) { color3 /= 5; }
-						*/
-						glm::vec3 color = color1;
-						// glm::vec3 color = color1 + color2 + color3;
-						// color = glm::clamp(color, 0.0f, 1.0f);
-						// color gets converted to always be between 0 and 1
-						color = color / (color + 0.4f);
-						colorPoint.x = int((color.x * 255));
-						colorPoint.y = int((color.y * 255));
-						colorPoint.z = int((color.z * 255));
-					}
+					bool isShadow = shadowIntersection(objManager, objFilename, lightPos, fDistance, ray);
+					glm::vec3 color1 = phongIllumination(trianglesBox[k], ray, lightPos, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
+					if (isShadow) { color1 /= 5; }
+					/*
+					bool isShadow1 = shadowIntersection(objManager, objFilename, lightPos1, fDistance, ray);
+					glm::vec3 color2 = phongIllumination(triangles[k], ray, lightPos1, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
+					if (isShadow1) { color2 /= 5; }
+
+					bool isShadow2 = shadowIntersection(objManager, objFilename, lightPos2, fDistance, ray);
+					glm::vec3 color3 = phongIllumination(triangles[k], ray, lightPos2, lightColor, objManager.getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
+					if (isShadow2) { color3 /= 5; }
+					*/
+					glm::vec3 color = color1;
+					// glm::vec3 color = color1 + color2 + color3;
+					// color = glm::clamp(color, 0.0f, 1.0f);
+					// color gets converted to always be between 0 and 1
+					color = color / (color + 0.4f);
+					colorPoint.x = int((color.x * 255));
+					colorPoint.y = int((color.y * 255));
+					colorPoint.z = int((color.z * 255));
+					// }
 				}
 			}
 		}
@@ -486,14 +515,14 @@ int main()
 
 
 		
-		objManager.loadObjFile("bunny.obj");
-		objManager.transformTriangles("bunny.obj", Transformation::scaleObj(3.0f, 3.0f, 3.0f));
-		objManager.transformTriangles("bunny.obj", Transformation::rotateObjX(110));
-		objManager.transformTriangles("bunny.obj", Transformation::rotateObjY(90));
+		objManager.loadObjFile("stanford-bunny.obj");
+		objManager.transformTriangles("stanford-bunny.obj", Transformation::scaleObj(5.0f, 5.0f, 5.0f));
+		objManager.transformTriangles("stanford-bunny.obj", Transformation::rotateObjX(110));
+		objManager.transformTriangles("stanford-bunny.obj", Transformation::rotateObjY(90));
 
-		objManager.transformTriangles("bunny.obj", Transformation::changeObjPosition(glm::vec3(18.f, -38.f, 10.f)));
-		objManager.transformTriangles("bunny.obj", glm::inverse(viewMatrix));
-		objManager.createBoundingHierarchy("bunny.obj");
+		objManager.transformTriangles("stanford-bunny.obj", Transformation::changeObjPosition(glm::vec3(18.f, -38.f, 10.f)));
+		objManager.transformTriangles("stanford-bunny.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("stanford-bunny.obj");
 
 		objManager.loadObjFile("cube.obj");
 		objManager.objTriangles["cube1.obj"] = objManager.getTriangles("cube.obj");
@@ -513,6 +542,7 @@ int main()
 		objManager.transformTriangles("cube1.obj", glm::inverse(viewMatrix));
 		objManager.createBoundingHierarchy("cube1.obj");
 
+		std::cout << "Geht schnell";
 		
 		// std::cout << "Size Bunny" << objManager.boundingVolumeHierarchy["bunny.obj"]->left->triangles.size() << "Size" << objManager.boundingVolumeHierarchy["cube1.obj"]->left->triangles.size();
 		 
