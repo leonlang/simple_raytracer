@@ -18,7 +18,7 @@ using namespace cimg_library;
 
 struct ImageData { std::vector<glm::vec2> imagePoints; std::vector<glm::vec3> imageColors; };
 
-glm::vec3 calculateTriangleNormal(Triangle triangle) {
+glm::vec3 calculateTriangleNormal(const Triangle& triangle) {
 	glm::vec3 v1 = triangle.pointTwo - triangle.pointOne;
 	glm::vec3 v2 = triangle.pointThree - triangle.pointOne;
 	glm::vec3 normal = glm::cross(v1, v2);
@@ -105,7 +105,7 @@ glm::vec3 interpolateNormal(const Triangle& triangle, const glm::vec3& barycentr
 	);
 }
 
-glm::vec3 phongIllumination(const Triangle* triangle, const Ray* ray, const glm::vec3& lightPos, const glm::vec3& lightColor, const glm::vec3& objectColor, float ambientStrength, float specularStrength, float shininess, float distance) {
+glm::vec3 phongIllumination(const Triangle* triangle, const Ray* ray, const glm::vec3& lightPos, const glm::vec3& lightColor, const glm::vec3& objectColor, const float& ambientStrength, const float& specularStrength, const float& shininess, const float& distance) {
 	// Phong illumination model
 
 	// objectColor = object color
@@ -211,7 +211,7 @@ bool intersectRayAabb(const glm::vec3& direction, const glm::vec3& minBox, const
 	return true;
 }
 
-bool intersectRayAabbNoOrigin(Ray ray, const glm::vec3& minBox, const glm::vec3& maxBox) {
+bool intersectRayAabbNoOrigin(const Ray& ray, const glm::vec3& minBox, const glm::vec3& maxBox) {
 	// Calculate the t values for each pair of planes
 
 	// origin is always at 0 because we are at view Space so we don't need to include it in 
@@ -256,7 +256,7 @@ bool intersectRayAabbNoOrigin(Ray ray, const glm::vec3& minBox, const glm::vec3&
 
 	return true;
 }
-std::vector<Triangle> boundingBoxIntersection(Node* node, Ray ray) {
+std::vector<Triangle> boundingBoxIntersection(Node* node, const Ray& ray) {
 	// Only Collect Triangles if Ray and Box have intersection
 	if (!intersectRayAabbNoOrigin(ray, node->minBox, node->maxBox)) {
 		return {};
@@ -279,7 +279,7 @@ std::vector<Triangle> boundingBoxIntersection(Node* node, Ray ray) {
 	}
 }
 
-bool shadowIntersection(ObjectManager* objManager, std::string currentObjFilename, glm::vec3 lightPos, float fDistance, Ray ray) {
+bool shadowIntersection(ObjectManager* objManager, const std::string& currentObjFilename, const glm::vec3& lightPos, const float& fDistance, const Ray& ray) {
 	for (const auto& pairShadow : objManager->objTriangles) {
 		const std::string& shadowObjFilename = pairShadow.first;
 		// const std::vector<Triangle>& shadowTriangles = pairShadow.second;
@@ -304,7 +304,7 @@ bool shadowIntersection(ObjectManager* objManager, std::string currentObjFilenam
 }
 
 
-std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager* objManager, int pointX, int pointY, glm::vec3 lightPos) {
+std::pair<glm::vec2, glm::vec3> rayIntersection(const Ray& ray, ObjectManager* objManager, const int& pointX,const int& pointY, const glm::vec3& lightPos) {
 
 	glm::vec3 colorPoint(0, 0, 0);
 	float distanceComparison = INFINITY;
@@ -381,7 +381,7 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(Ray ray, ObjectManager* objManag
 	return { imagePoint, colorPoint };
 }
 
-void drawImage(glm::vec2 imgSize, std::vector<glm::vec2> imagePoints, std::vector<glm::vec3> imageColors, int angleDegree, bool saveImage, bool displayImage) {
+void drawImage(const glm::vec2& imgSize, const std::vector<glm::vec2>& imagePoints, const std::vector<glm::vec3>& imageColors, const int& angleDegree,const bool& saveImage, const bool& displayImage) {
 	// create image
 	int imageWidth = 600;
 	int imageHeight = 400;

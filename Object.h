@@ -46,7 +46,7 @@ struct Node {
     Node* right;
 
     // Constructor to initialize the node with a value
-    Node(std::vector<Triangle> triangleD, glm::vec3 minBoxD, glm::vec3 maxBoxD)
+    Node(const std::vector<Triangle>& triangleD, const glm::vec3& minBoxD, const glm::vec3& maxBoxD)
         : triangles(triangleD), minBox(minBoxD), maxBox(maxBoxD), left(nullptr), right(nullptr) {
     }
 };
