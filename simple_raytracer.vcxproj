@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\leon\Documents\projects\simple_raytracer\library\tinyobjloader;C:\Users\leon\Documents\projects\simple_raytracer\library\glm-master\glm;C:\Users\leon\Documents\projects\simple_raytracer\library\clmg;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\leon\Documents\projects\simple_raytracer\library\stb-master;C:\Users\leon\Documents\projects\simple_raytracer\library\tinyobjloader;C:\Users\leon\Documents\projects\simple_raytracer\library\glm-master\glm;C:\Users\leon\Documents\projects\simple_raytracer\library\clmg;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

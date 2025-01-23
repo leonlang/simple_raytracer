@@ -1,5 +1,8 @@
 #include "Object.h"
 #include <iostream>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h" // Include an image loading library like stb_image
+
 
 // Default constructor implementation 
 Triangle::Triangle() 
@@ -20,8 +23,40 @@ glm::vec3 Triangle::calculateNormal() const {
 Ray::Ray(glm::vec3 d) 
     : origin(0.0f, 0.0f, 0.0f), direction(d) {}
 
+void getColorAtCoordinates(const std::string& filePath, int x, int y) {
+    int width, height, channels;
+
+    // Load the image
+    unsigned char* data = stbi_load(filePath.c_str(), &width, &height, &channels, 0);
+    if (!data) {
+        std::cerr << "Failed to load image: " << filePath << std::endl;
+        return;
+    }
+
+    // Ensure the coordinates are within the image bounds
+    if (x < 0 || x >= width || y < 0 || y >= height) {
+        std::cerr << "Coordinates (" << x << ", " << y << ") are out of bounds!" << std::endl;
+        stbi_image_free(data);
+        return;
+    }
+
+    // Calculate the index for the pixel in the array
+    int index = (y * width + x) * channels;
+
+    // Print color values
+    std::cout << "Color at (" << x << ", " << y << "): " << std::endl;
+    std::cout << "  Red:   " << static_cast<int>(data[index]) << std::endl;
+    if (channels > 1) std::cout << "  Green: " << static_cast<int>(data[index + 1]) << std::endl;
+    if (channels > 2) std::cout << "  Blue:  " << static_cast<int>(data[index + 2]) << std::endl;
+    if (channels == 4) std::cout << "  Alpha: " << static_cast<int>(data[index + 3]) << std::endl;
+
+    // Free the image memory
+    stbi_image_free(data);
+} 
 
 // ObjectManager class implementation
+// https://github.com/tinyobjloader/tinyobjloader?tab=readme-ov-file
+// Code is from readme File (Example code (New Object Oriented API)) and slightly modified to fit my implementation
 void ObjectManager::loadObjFile(const std::string& objFilename) {
     std::string inputFile = objFilename;
     tinyobj::ObjReader reader;
@@ -33,53 +68,123 @@ void ObjectManager::loadObjFile(const std::string& objFilename) {
             std::cerr << "TinyObjReader: " << reader.Error();
         }
     }
-
+    if (!reader.Warning().empty()) {
+        std::cout << "TinyObjReader: " << reader.Warning();
+    }
     auto& attrib = reader.GetAttrib();
     auto& shapes = reader.GetShapes();
     auto& materials = reader.GetMaterials();
 
     std::vector<Triangle> triangles;
 
-    // store triangles and normals
-    for (const auto& shape : shapes) {
-        for (const auto& index : shape.mesh.indices) {
-            glm::vec3 vertex(
-                attrib.vertices[3 * index.vertex_index + 0],
-                attrib.vertices[3 * index.vertex_index + 1],
-                attrib.vertices[3 * index.vertex_index + 2]
-            );
-            /*
-            glm::vec3 normal(
-                attrib.normals[3 * index.normal_index + 0],
-                attrib.normals[3 * index.normal_index + 1],
-                attrib.normals[3 * index.normal_index + 2]
-            ); */
-            static std::vector<glm::vec3> vertices;
-            vertices.push_back(vertex);
-            static std::vector<glm::vec3> normals;
-            // normals.push_back(normal);
-            if (vertices.size() == 3) {
-                /*
-                Triangle triangle(
-                    glm::vec4(vertices[0], 1),
-                    glm::vec4(vertices[1], 1),
-                    glm::vec4(vertices[2], 1),
-                    normals[0],
-                    normals[1],
-                    normals[2]
-                );*/
-                Triangle triangle(
-                    glm::vec4(vertices[0], 1),
-                    glm::vec4(vertices[1], 1),
-                    glm::vec4(vertices[2], 1),
-                    glm::vec3(0,0,0),
-                    glm::vec3(0, 0, 0),
-                    glm::vec3(0, 0, 0)
-                );
-                triangles.push_back(triangle);
-                vertices.clear();
-                normals.clear();
+    // New
+    std::unordered_map<std::string, unsigned char*> textureData;
+    std::unordered_map<std::string, glm::ivec2> textureDimensions;
+    for (const auto& material : materials) {
+        if (!material.diffuse_texname.empty()) {
+            int width, height, channels;
+            std::string texturePath = material.diffuse_texname;
+            unsigned char* data = stbi_load(texturePath.c_str(), &width, &height, &channels, 3);
+            // std::cout << material.diffuse_texname;
+            if (data) {
+                textureData[texturePath] = data;
+                textureDimensions[texturePath] = glm::ivec2(width, height);
             }
+            else {
+                std::cerr << "Failed to load texture: " << texturePath << std::endl;
+            }
+        }
+    }
+    // Loop over shapes
+    for (size_t s = 0; s < shapes.size(); s++) {
+        // Loop over faces (polygons)
+        size_t index_offset = 0;
+        for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+            size_t fv = size_t(shapes[s].mesh.num_face_vertices[f]);
+
+            // Loop over vertices in the face.
+            Triangle tria;
+            for (size_t v = 0; v < fv; v++) {
+                if (fv == 3) {
+                    glm::vec4 vertex(0.0f, 0.0f, 0.0f, 1.0f);
+                    glm::vec3 vnormal(0.0f, 0.0f, 0.0f);
+                    glm::vec3 vcolor(1.0f, 1.0f, 1.0f);
+                    // access to vertex
+                    tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
+                    vertex.x = attrib.vertices[3 * size_t(idx.vertex_index) + 0];
+                    vertex.y = attrib.vertices[3 * size_t(idx.vertex_index) + 1];
+                    vertex.z = attrib.vertices[3 * size_t(idx.vertex_index) + 2];
+
+                    // Check if `normal_index` is zero or positive. negative = no normal data
+                    if (idx.normal_index >= 0) {
+                        vnormal.x = attrib.normals[3 * size_t(idx.normal_index) + 0];
+                        vnormal.y = attrib.normals[3 * size_t(idx.normal_index) + 1];
+                        vnormal.z = attrib.normals[3 * size_t(idx.normal_index) + 2];
+                    }
+
+                    // Check if `texcoord_index` is zero or positive. negative = no texcoord data
+                    if (idx.texcoord_index >= 0) {
+                        tinyobj::real_t tx = attrib.texcoords[2 * size_t(idx.texcoord_index) + 0];
+                        tinyobj::real_t ty = attrib.texcoords[2 * size_t(idx.texcoord_index) + 1];
+
+                        // Use Texture for Color
+                        int materialID = shapes[s].mesh.material_ids[f];
+                        if (materialID >= 0 && materialID < int(materials.size())) {
+                            std::string texturePath = materials[materialID].diffuse_texname;
+                            if (!texturePath.empty() && textureData.count(texturePath)) {
+                                unsigned char* texData = textureData[texturePath];
+                                glm::ivec2 texDim = textureDimensions[texturePath];
+
+                                // Ensure valid texture dimensions
+                                if (texDim.x > 0 && texDim.y > 0 && texData) {
+                                    int u = static_cast<int>(std::floor(tx * texDim.x)) % texDim.x;
+                                    int v = static_cast<int>(std::floor((1.0f - ty) * texDim.y)) % texDim.y;
+
+                                    // Ensure u and v are non-negative
+                                    u = (u + texDim.x) % texDim.x;
+                                    v = (v + texDim.y) % texDim.y;
+
+                                    size_t texIndex = (v * texDim.x + u) * 3;
+                                    vcolor.x = texData[texIndex + 0] / 255.0f;
+                                    vcolor.y = texData[texIndex + 1] / 255.0f;
+                                    vcolor.z = texData[texIndex + 2] / 255.0f;
+                                }
+                            }
+                        }
+                    }
+                    /*
+                    // Optional: vertex colors
+                    vcolor.x = attrib.colors[3 * size_t(idx.vertex_index) + 0];
+                    vcolor.y = attrib.colors[3 * size_t(idx.vertex_index) + 1];
+                    vcolor.z = attrib.colors[3 * size_t(idx.vertex_index) + 2];
+
+                    int materialID = shapes[s].mesh.material_ids[f];
+                    if (materialID >= 0 && materialID < int(materials.size())) {
+                        vcolor.x = materials[materialID].diffuse[0];
+                        vcolor.y = materials[materialID].diffuse[1];
+                        vcolor.z = materials[materialID].diffuse[2];
+                    }
+                    */
+                    // std::cout << "Red" << vcolor.x << "Green" << vcolor.y << "Blue" << vcolor.z << std::endl;
+                    if (v == 0) {
+                        tria.pointOne = vertex;
+                        tria.normalOne = vnormal;
+                        tria.color = vcolor;
+                    }
+                    if (v == 1) {
+                        tria.pointTwo = vertex;
+                        tria.normalTwo = vnormal;
+                        tria.color = vcolor;
+                    }
+                    if (v == 2) {
+                        tria.pointThree = vertex;
+                        tria.normalThree = vnormal;
+                        tria.color = vcolor;
+                    }
+                }
+            }
+            triangles.push_back(tria);
+            index_offset += fv;
         }
     }
 

@@ -1,4 +1,4 @@
-// simple_raytracer.cpp : This file contains the 'main' function. Program execution begins and ends there.
+ï»¿// simple_raytracer.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
 #include <iostream>
@@ -27,7 +27,7 @@ glm::vec3 calculateTriangleNormal(const Triangle& triangle) {
 
 inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
 	// Intersection of a ray with a triangle
-	// This implementation uses the Möller–Trumbore intersection algorithm
+	// This implementation uses the MÃ¶llerâ€“Trumbore intersection algorithm
 
 	// Triangle Point1 in Cartesian Form
 	glm::vec3 tP1Cartesian = glm::vec3(triangle->pointOne) / triangle->pointOne.w;
@@ -109,7 +109,6 @@ glm::vec3 interpolateNormal(const Triangle& triangle, const glm::vec3& barycentr
 
 glm::vec3 phongIllumination(const Triangle* triangle, const Ray* ray, const glm::vec3& lightPos, const glm::vec3& lightColor, const glm::vec3& objectColor, const float& ambientStrength, const float& specularStrength, const float& shininess, const float& distance) {
 	// Phong illumination model
-
 	// objectColor = object color
 	// lightColor = Light Color
 	// shininess = specular radius
@@ -363,7 +362,8 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(const Ray& ray, ObjectManager* o
 					lightPos2.z += 10;
 
 					bool isShadow = shadowIntersection(objManager, objFilename, lightPos, fDistance, ray);
-					glm::vec3 color1 = phongIllumination(&trianglesBox[k], &ray, lightPos, lightColor, objManager->getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
+					glm::vec3 color1 = phongIllumination(&trianglesBox[k], &ray, lightPos, lightColor, trianglesBox[k].color, ambientStrength, specularStrength, shininess, fDistance);
+					// glm::vec3 color1 = phongIllumination(&trianglesBox[k], &ray, lightPos, lightColor, objManager->getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
 					if (isShadow) { color1 /= 5; }
 					/*
 					bool isShadow1 = shadowIntersection(objManager, objFilename, lightPos1, fDistance, ray);
@@ -393,8 +393,8 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(const Ray& ray, ObjectManager* o
 
 void drawImage(const glm::vec2& imgSize, const std::vector<glm::vec2>& imagePoints, const std::vector<glm::vec3>& imageColors, const int& angleDegree,const bool& saveImage, const bool& displayImage) {
 	// create image
-	int imageWidth = 600;
-	int imageHeight = 400;
+	int imageWidth = 1920;
+	int imageHeight = 1080;
 	CImg<unsigned char> img(imgSize.x, imgSize.y, 1, 3);
 	img.fill(0);
 
@@ -469,10 +469,15 @@ ImageData sendRaysAndIntersectPointsColors(const glm::vec2& imageSize, const glm
 
 
 
-
 int main()
 {
+	/*
+	std::string filePath = "uyhh44.png"; // Image file path
+	int x = 50; // X-coordinate
+	int y = 100; // Y-coordinate
 
+	getColorAtCoordinates(filePath, x, y);
+	*/
 	// save images at different degrees based on camera
 	for (float angleDegree = 0; angleDegree < 360; angleDegree = angleDegree + 10) {
 
@@ -545,18 +550,75 @@ int main()
 		objManager.transformTriangles("bunny.obj", glm::inverse(viewMatrix));
 		objManager.createBoundingHierarchy("bunny.obj");
 		*/
-		
-		objManager.loadObjFile("stanford-bunny.obj");
-		objManager.transformTriangles("stanford-bunny.obj", Transformation::scaleObj(60.f, 60.0f, 60.0f));
-		objManager.transformTriangles("stanford-bunny.obj", Transformation::rotateObjX(glm::radians(181.f)));
-		objManager.transformTriangles("stanford-bunny.obj", Transformation::rotateObjY(glm::radians(90.f)));
+		/*
+		objManager.loadObjFile("chair.obj");
+		objManager.transformTriangles("chair.obj", Transformation::scaleObj(30.f, 30.0f, 30.0f));
+		objManager.transformTriangles("chair.obj", Transformation::rotateObjX(glm::radians(-90.f)));
+		objManager.transformTriangles("chair.obj", Transformation::rotateObjY(glm::radians(181.f)));
+		// objManager.transformTriangles("chair.obj", Transformation::rotateObjZ(glm::radians(90.f)));
 
-		objManager.transformTriangles("stanford-bunny.obj", Transformation::changeObjPosition(glm::vec3(8.f, -30.f, 5.f)));
-		objManager.transformTriangles("stanford-bunny.obj", glm::inverse(viewMatrix));
-		objManager.createBoundingHierarchy("stanford-bunny.obj");
+		objManager.transformTriangles("chair.obj", Transformation::changeObjPosition(glm::vec3(8.f, -25.f, -15.f)));
+		objManager.transformTriangles("chair.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("chair.obj");
+		*/
+		
+		objManager.loadObjFile("./obj/cat/cat.obj");
+		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::scaleObj(0.3f, 0.3f, 0.3f));
+		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::rotateObjX(glm::radians(-90.f)));
+		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::rotateObjY(glm::radians(181.f)));
+		// objManager.transformTriangles("chair.obj", Transformation::rotateObjZ(glm::radians(90.f)));
+
+		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::changeObjPosition(glm::vec3(8.f, -25.f, -15.f)));
+		objManager.transformTriangles("./obj/cat/cat.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("./obj/cat/cat.obj");
+		
+		/*
+		objManager.loadObjFile("cornell_box.obj");
+		objManager.transformTriangles("cornell_box.obj", Transformation::scaleObj(10.f, 10.0f, 10.0f));
+		// objManager.transformTriangles("chair.obj", Transformation::rotateObjX(glm::radians(181.f)));
+		// objManager.transformTriangles("chair.obj", Transformation::rotateObjY(glm::radians(90.f)));
+
+		objManager.transformTriangles("cornell_box.obj", Transformation::changeObjPosition(glm::vec3(8.f, -25.f, -15.f)));
+		objManager.transformTriangles("cornell_box.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("cornell_box.obj");
+		*/
+		
+		/*
+		objManager.loadObjFile("10438_Circular_Grass_Patch_v1_iterations-2.obj");
+		objManager.transformTriangles("10438_Circular_Grass_Patch_v1_iterations-2.obj", Transformation::scaleObj(0.1f, 0.1f, 0.1f));
+		objManager.transformTriangles("10438_Circular_Grass_Patch_v1_iterations-2.obj", Transformation::rotateObjX(glm::radians(181.f)));
+		objManager.transformTriangles("10438_Circular_Grass_Patch_v1_iterations-2.obj", Transformation::rotateObjY(glm::radians(90.f)));
+
+		objManager.transformTriangles("10438_Circular_Grass_Patch_v1_iterations-2.obj", Transformation::changeObjPosition(glm::vec3(8.f, -30.f, 5.f)));
+		objManager.transformTriangles("10438_Circular_Grass_Patch_v1_iterations-2.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("10438_Circular_Grass_Patch_v1_iterations-2.obj");
+		*/
+		
+		objManager.loadObjFile("./obj/stanford-bunny.obj");
+		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::scaleObj(60.f, 60.0f, 60.0f));
+		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::rotateObjX(glm::radians(181.f)));
+		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::rotateObjY(glm::radians(90.f)));
+
+		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::changeObjPosition(glm::vec3(8.f, -25.f, 5.f)));
+		objManager.transformTriangles("./obj/stanford-bunny.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("./obj/stanford-bunny.obj");
+		
+
+		/*
+		objManager.loadObjFile("./obj/house/house.obj");
+		objManager.transformTriangles("./obj/house/house.obj", Transformation::scaleObj(0.1f, 0.1f, 0.1f));
+		objManager.transformTriangles("./obj/house/house.obj", Transformation::rotateObjX(glm::radians(181.f)));
+		objManager.transformTriangles("./obj/house/house.obj", Transformation::rotateObjY(glm::radians(90.f)));
+
+		objManager.transformTriangles("./obj/house/house.obj", Transformation::changeObjPosition(glm::vec3(25.f, -30.f, 0.f)));
+		objManager.transformTriangles("./obj/house/house.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("./obj/house/house.obj");
+		*/
+
+
 		
 		objManager.loadObjFile("cube.obj");
-		objManager.objTriangles["cube1.obj"] = objManager.getTriangles("cube.obj");
+		// objManager.objTriangles["cube1.obj"] = objManager.getTriangles("cube.obj");
 		objManager.setColor("cube.obj", glm::vec3(0.f, 1.f, 0.f));
 		objManager.transformTriangles("cube.obj", Transformation::scaleObj(35.0f, 35.0f, 35.0f));
 		// objManager.transformTriangles("cube.obj", Transformation::rotateObjZ(-10.f));
@@ -564,13 +626,14 @@ int main()
 		objManager.transformTriangles("cube.obj", Transformation::changeObjPosition(glm::vec3(0.f, 10.f, 0.f)));
 		objManager.transformTriangles("cube.obj", glm::inverse(viewMatrix));
 		objManager.createBoundingHierarchy("cube.obj");
-
+		/*
 		objManager.setColor("cube1.obj", glm::vec3(0.f, 0.f, 1.f));
 		objManager.transformTriangles("cube1.obj", Transformation::scaleObj(3.0f, 3.0f, 3.0f));
 		objManager.transformTriangles("cube1.obj", Transformation::changeObjPosition(glm::vec3(15.f, -38.f, -10.f)));
 		// objManager.transformTriangles("cube1.obj", Transformation::changeObjPosition(glm::vec3(50.f, 5.f, -20.f)));
 		objManager.transformTriangles("cube1.obj", glm::inverse(viewMatrix));
-		objManager.createBoundingHierarchy("cube1.obj");
+		objManager.createBoundingHierarchy("cube1.obj"); */
+		
 		/*
 		// Load Cube Triangles and scale it
 

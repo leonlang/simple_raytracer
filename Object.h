@@ -11,6 +11,7 @@
 #include "tiny_obj_loader.h"
 #include <algorithm>
 
+
 class Triangle {
 public:
     glm::vec4 pointOne;
@@ -19,7 +20,7 @@ public:
     glm::vec3 normalOne;  // Normal at pointOne
     glm::vec3 normalTwo;  // Normal at pointTwo
     glm::vec3 normalThree; // Normal at pointThree
-
+    glm::vec3 color;
     // Default constructor
     Triangle();
 
