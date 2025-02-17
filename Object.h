@@ -20,7 +20,11 @@ public:
     glm::vec3 normalOne;  // Normal at pointOne
     glm::vec3 normalTwo;  // Normal at pointTwo
     glm::vec3 normalThree; // Normal at pointThree
+    glm::vec2 colorOneCoordinate;
+    glm::vec2 colorTwoCoordinate;
+    glm::vec2 colorThreeCoordinate;
     glm::vec3 color;
+    std::string textureName;
     // Default constructor
     Triangle();
 
@@ -56,10 +60,15 @@ class ObjectManager {
 public:
     std::unordered_map<std::string, glm::vec3> minBox;
     std::unordered_map<std::string, glm::vec3> maxBox;
+    // ambientStrength, specularStrength and shininess
+    std::unordered_map<std::string, glm::vec3> objProperties;
     std::unordered_map<std::string, std::vector<Triangle>> objTriangles;
     std::unordered_map<std::string, Node*> boundingVolumeHierarchy;
     // define object color
     std::unordered_map<std::string, glm::vec3> objColors;
+    // loaded textures
+    std::unordered_map<std::string, unsigned char*> textureData;
+    std::unordered_map<std::string, glm::ivec2> textureDimensions;
     // Method to load triangles from an OBJ file
     void loadObjFile(const std::string& objFilename);
 

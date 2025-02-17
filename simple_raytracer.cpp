@@ -16,42 +16,51 @@ using namespace cimg_library;
 #define TINYOBJLOADER_USE_MAPBOX_EARCUT
 #include "tiny_obj_loader.h"
 
+// Notes:
+// Each Function presents an introduction. For example: Triangle Intersection corresponds to the same section in the report
+
 struct ImageData { std::vector<glm::vec2> imagePoints; std::vector<glm::vec3> imageColors; };
 
-glm::vec3 calculateTriangleNormal(const Triangle& triangle) {
-	glm::vec3 v1 = triangle.pointTwo - triangle.pointOne;
-	glm::vec3 v2 = triangle.pointThree - triangle.pointOne;
+// Normal Interpolation
+// Concept for the Algorithm: https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
+glm::vec3 calculateTriangleNormal(const Triangle* triangle) {
+	glm::vec3 v1 = triangle->pointTwo - triangle->pointOne;
+	glm::vec3 v2 = triangle->pointThree - triangle->pointOne;
 	glm::vec3 normal = glm::cross(v1, v2);
 	return glm::normalize(normal);
 }
 
+// Triangle Intersection
+// This implementation uses the Möller–Trumbore intersection algorithm
+// Concept for the Algorithm: https://www.graphics.cornell.edu/pubs/1997/MT97.pdf
 inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
 	// Intersection of a ray with a triangle
-	// This implementation uses the Möller–Trumbore intersection algorithm
-
 	// Triangle Point1 in Cartesian Form
 	glm::vec3 tP1Cartesian = glm::vec3(triangle->pointOne) / triangle->pointOne.w;
 	glm::vec3 tP2Cartesian = glm::vec3(triangle->pointTwo) / triangle->pointTwo.w;
 	glm::vec3 tP3Cartesian = glm::vec3(triangle->pointThree) / triangle->pointThree.w;
 
+	// edge vectors
 	glm::vec3 p1p2 = tP2Cartesian - tP1Cartesian;
 	glm::vec3 p1p3 = tP3Cartesian - tP1Cartesian;
+
+	// determinant
 	glm::vec3 pvec = glm::cross(ray->direction, p1p3);
 	float det = glm::dot(p1p2, pvec);
 
-	// This code in combination with the bunny resulted in wrong shadows
-	// So I increased the 1e-7f and made it always positive for the check
 	if (fabs(det) < 1e-12f) return -INFINITY;
 
+	// inverse Determinant
 	float invDet = 1.0f / det;
+	// distance vector
 	glm::vec3 tvec = ray->origin - tP1Cartesian;
+	// u and v paramter
 	float u = glm::dot(tvec, pvec) * invDet;
 	if (u < 0.0f || u > 1.0f) return -INFINITY;
-
 	glm::vec3 qvec = glm::cross(tvec, p1p2);
 	float v = glm::dot(ray->direction, qvec) * invDet;
 	if (v < 0.0f || u + v > 1.0f) return -INFINITY;
-
+	// intersection distance
 	float t = glm::dot(p1p3, qvec) * invDet;
 
 	// Check if triangle is behind ray
@@ -59,15 +68,18 @@ inline float rayTriangleIntersection(const Ray* ray, const Triangle* triangle) {
 	return t;
 }
 
-glm::vec3 calculateBarycentricCoords(const Triangle& triangle, const glm::vec3& point) {
+// Phong Shading
+// Concept for the Algorithm: https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/barycentric-coordinates.html
+glm::vec3 calculateBarycentricCoords(const Triangle* triangle, const glm::vec3& point) {
+	// Triangle Point1 in Cartesian Form
+	glm::vec3 tP1Cartesian = glm::vec3(triangle->pointOne) / triangle->pointOne.w;
+	glm::vec3 tP2Cartesian = glm::vec3(triangle->pointTwo) / triangle->pointTwo.w;
+	glm::vec3 tP3Cartesian = glm::vec3(triangle->pointThree) / triangle->pointThree.w;
+
 	// Calculate the vectors from pointOne to the other two vertices of the triangle
 	// These vectors represent the edges of the triangle and the vector from the
 	// first vertex to the point of interest. They are used for determining the relative
 	// position of the point within the triangle.
-	glm::vec3 tP1Cartesian = glm::vec3(triangle.pointOne) / triangle.pointOne.w;
-	glm::vec3 tP2Cartesian = glm::vec3(triangle.pointTwo) / triangle.pointTwo.w;
-	glm::vec3 tP3Cartesian = glm::vec3(triangle.pointThree) / triangle.pointThree.w;
-
 	glm::vec3 v0 = tP2Cartesian - tP1Cartesian;
 	glm::vec3 v1 = tP3Cartesian - tP1Cartesian;
 	glm::vec3 v2 = point - tP1Cartesian;
@@ -94,9 +106,20 @@ glm::vec3 calculateBarycentricCoords(const Triangle& triangle, const glm::vec3& 
 	float u = 1.0f - v - w;
 
 	// Return the barycentric coordinates as a vec3
+	// std::cout << "1:" << u << "2:" << v << "3:" << w << std::endl;
 	return glm::vec3(u, v, w);
 }
+// Function to compute the interpolated texture coordinate
+glm::vec2 getTextureCoordinate(const glm::vec3& barycentricCoords, const glm::vec2& texCoordA, const glm::vec2& texCoordB, const glm::vec2& texCoordC) {
+	// Interpolate the texture coordinates using the barycentric coordinates
+	glm::vec2 texCoord = barycentricCoords.x * texCoordA
+		+ barycentricCoords.y * texCoordB
+		+ barycentricCoords.z * texCoordC;
 
+	return texCoord;
+}
+
+// Phong Shading
 glm::vec3 interpolateNormal(const Triangle& triangle, const glm::vec3& barycentricCoords) {
 	// By multiplying each vertex normal by its corresponding barycentric coordinate, 
 	// I am weighting each normal by how much influence that vertex has at the point of interest.
@@ -107,6 +130,8 @@ glm::vec3 interpolateNormal(const Triangle& triangle, const glm::vec3& barycentr
 	);
 }
 
+// Lighting with Phong Illumination Model
+// Concept is found here: https://cg.informatik.uni-freiburg.de/course_notes/graphics_02_shading.pdf
 glm::vec3 phongIllumination(const Triangle* triangle, const Ray* ray, const glm::vec3& lightPos, const glm::vec3& lightColor, const glm::vec3& objectColor, const float& ambientStrength, const float& specularStrength, const float& shininess, const float& distance) {
 	// Phong illumination model
 	// objectColor = object color
@@ -122,12 +147,12 @@ glm::vec3 phongIllumination(const Triangle* triangle, const Ray* ray, const glm:
 	glm::vec3 intersectionPoint = ray->origin + distance * ray->direction;
 
 	// Calculate barycentric coordinates for the intersection point within the triangle
-	glm::vec3 barycentricCoords = calculateBarycentricCoords(*triangle, intersectionPoint);
+	glm::vec3 barycentricCoords = calculateBarycentricCoords(triangle, intersectionPoint);
 
 	// Interpolate the normal at the intersection point using barycentric coordinates
-	// glm::vec3 n = interpolateNormal(triangle, barycentricCoords); // normal
+	// glm::vec3 n = interpolateNormal(*triangle, barycentricCoords); // normal
 	// test with normal
-	glm::vec3 n = calculateTriangleNormal(*triangle);
+	glm::vec3 n = calculateTriangleNormal(triangle);
 	// Calculate the direction vector from the intersection point to the light source
 	glm::vec3 l = glm::normalize(lightPos - intersectionPoint); // lightDirection
 
@@ -294,6 +319,7 @@ bool shadowIntersection(ObjectManager* objManager, const std::string& currentObj
 		// const std::vector<Triangle>& trianglesBox = pairShadow.second;
 		Ray shadowRay(lightPos - ray.direction * fDistance);
 		shadowRay.origin = ray.direction * fDistance;
+		// shadowRay.origin += ray.direction * 0.001f; // add small value to prevent shadowAcne
 		const std::vector<Triangle>& trianglesBox = boundingBoxIntersection(objManager->boundingVolumeHierarchy[shadowObjFilename], shadowRay);
 
 		// if (intersectRayAabbNoOrigin(shadowRay, objManager.minBox[shadowObjFilename], objManager.maxBox[shadowObjFilename])) {
@@ -312,6 +338,56 @@ bool shadowIntersection(ObjectManager* objManager, const std::string& currentObj
 	return false;
 }
 
+// Generate multiple light Sources in near distance to each other
+// And use tone mapping
+glm::vec3 softShadow(int lightAmount,ObjectManager* objManager, const std::string& objFilename,const Triangle* triangle, const Ray* ray, const glm::vec3& lightPos, const glm::vec3& lightColor, const glm::vec3& objColor, const float& distance) {
+	glm::vec3 testColor = objColor;
+	if (!triangle->textureName.empty()) {
+		glm::vec3 intersectionPoint = ray->origin + distance * ray->direction;
+		glm::vec2 interpolatedTexCoordinate = getTextureCoordinate(calculateBarycentricCoords(triangle, intersectionPoint), triangle->colorOneCoordinate, triangle->colorTwoCoordinate, triangle->colorThreeCoordinate);
+		// std::cout << "Interpolated X:" << interpolatedTexCoordinate.x << "Xone:" << triangle->colorOneCoordinate.x << "Xtwo:" << triangle->colorTwoCoordinate.x << "XThree:" << triangle->colorThreeCoordinate.x << std::endl;
+		unsigned char* texData = objManager->textureData[triangle->textureName];
+		glm::ivec2 texDim = objManager->textureDimensions[triangle->textureName];
+
+		size_t texIndex = (static_cast<int>(interpolatedTexCoordinate.y) *texDim.x + static_cast<int>(interpolatedTexCoordinate.x)) * 3;
+		testColor.x = texData[texIndex + 0] / 255.0f;
+		testColor.y = texData[texIndex + 1] / 255.0f;
+		testColor.z = texData[texIndex + 2] / 255.0f;
+	}
+	glm::vec3 color(0.0f,0.0f,0.0f);
+	glm::vec3 lightPosChanged = lightPos;
+	// Generate the lightPos based on the last lightPos and change always one coordinate
+	for (int i = 0; i < lightAmount; i++) {
+		bool isShadow = shadowIntersection(objManager, objFilename, lightPosChanged, distance, *ray);
+		glm::vec3 colorPhong = phongIllumination(triangle, ray, lightPosChanged, lightColor, testColor, objManager->objProperties[objFilename][0], objManager->objProperties[objFilename][1], objManager->objProperties[objFilename][2], distance);
+		if (isShadow) { colorPhong /= 5; };
+		color += colorPhong;
+		// Before it was 2
+		switch (i % 3) {
+		case 0:
+			lightPosChanged.x += 3.0f;
+			break;
+		case 1:
+			lightPosChanged.y += 3.0f; 
+			break;
+		case 2:
+			lightPosChanged.z += 3.0f;
+			break;
+		}
+
+	}
+
+	// Reinhardt Tone Mapping 
+	// color = color / (color + 1.0f);
+	color = color / (color + 0.1f);
+	// color = color / (color + 4.0f);
+
+	// Add Gamma
+	glm::vec3 gamma (2.2f, 2.2f, 2.2f);
+	// color = glm::pow(color, gamma);
+
+	return color;
+}
 
 std::pair<glm::vec2, glm::vec3> rayIntersection(const Ray& ray, ObjectManager* objManager, const int& pointX,const int& pointY, const glm::vec3& lightPos) {
 
@@ -340,45 +416,20 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(const Ray& ray, ObjectManager* o
 
 					distanceComparison = fDistance;
 
-
-					// Initialize Phong Illumination with a Red Object
 					glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // White light
-					glm::vec3 objectColor(1.0f, 0.0f, 0.0f); // Red object
-					float ambientStrength = 0.2f;
-					float specularStrength = 0.5f;
-					float shininess = 15.0f;
 
 					// Code for many light Sources
 
-					glm::vec3 finalColor(0.f, 0.f, 0.f);
-					glm::vec3 lightPos1 = lightPos;
-					lightPos1.x += 10;
-					lightPos1.y += 10;
-					lightPos1.z += 10;
-
-					glm::vec3 lightPos2 = lightPos1;
-					lightPos2.x += 10;
-					lightPos2.y += 10;
-					lightPos2.z += 10;
-
-					bool isShadow = shadowIntersection(objManager, objFilename, lightPos, fDistance, ray);
-					glm::vec3 color1 = phongIllumination(&trianglesBox[k], &ray, lightPos, lightColor, trianglesBox[k].color, ambientStrength, specularStrength, shininess, fDistance);
-					// glm::vec3 color1 = phongIllumination(&trianglesBox[k], &ray, lightPos, lightColor, objManager->getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
-					if (isShadow) { color1 /= 5; }
-					/*
-					bool isShadow1 = shadowIntersection(objManager, objFilename, lightPos1, fDistance, ray);
-					glm::vec3 color2 = phongIllumination(&trianglesBox[k], &ray, lightPos1, lightColor, objManager->getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
-					if (isShadow1) { color2 /= 5; }
-
-					bool isShadow2 = shadowIntersection(objManager, objFilename, lightPos2, fDistance, ray);
-					glm::vec3 color3 = phongIllumination(&trianglesBox[k], &ray, lightPos2, lightColor, objManager->getColor(objFilename), ambientStrength, specularStrength, shininess, fDistance);
-					if (isShadow2) { color3 /= 5; }
-					*/
-					glm::vec3 color = color1;
-					// glm::vec3 color = color1 + color2 + color3;
-					// color = glm::clamp(color, 0.0f, 1.0f);
-					// color gets converted to always be between 0 and 1
-					color = color / (color + 0.4f);
+					glm::vec3 objColor(1,0,0);
+					if (trianglesBox[k].textureName.empty()) {
+						objColor = objManager->objColors[objFilename];
+					}
+					else {
+						objColor = trianglesBox[k].color;
+					}
+					// 36 Shadows are a good value
+					glm::vec3 color = softShadow(1,objManager,objFilename, &trianglesBox[k], &ray,lightPos,lightColor, objColor,fDistance);
+					// Convert 0...1 color values to 1...255 color Values
 					colorPoint.x = int((color.x * 255));
 					colorPoint.y = int((color.y * 255));
 					colorPoint.z = int((color.z * 255));
@@ -393,8 +444,6 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(const Ray& ray, ObjectManager* o
 
 void drawImage(const glm::vec2& imgSize, const std::vector<glm::vec2>& imagePoints, const std::vector<glm::vec3>& imageColors, const int& angleDegree,const bool& saveImage, const bool& displayImage) {
 	// create image
-	int imageWidth = 1920;
-	int imageHeight = 1080;
 	CImg<unsigned char> img(imgSize.x, imgSize.y, 1, 3);
 	img.fill(0);
 
@@ -434,7 +483,8 @@ void drawImage(const glm::vec2& imgSize, const std::vector<glm::vec2>& imagePoin
 
 
 
-
+// Sending out Rays
+// Sends out Rays and returns the corresponding color for each pixel
 ImageData sendRaysAndIntersectPointsColors(const glm::vec2& imageSize, const glm::vec4& lightPos, ObjectManager* objManager) {
 	Ray ray(glm::vec3(0.0f, 0.0f, 400.0f));
 	glm::vec2 rayXY = glm::vec2(ray.direction.x, ray.direction.y);
@@ -448,21 +498,12 @@ ImageData sendRaysAndIntersectPointsColors(const glm::vec2& imageSize, const glm
 			ray.direction.y = j + rayXY.y;
 
 			std::pair<glm::vec2, glm::vec3> points = rayIntersection(ray, objManager, i + imageSize.x / 2, j + imageSize.y / 2, lightPos);
-			/*
-			auto start = std::chrono::high_resolution_clock::now();
-			auto end = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-		std::cout << "Time taken: " << duration << " microseconds" << std::endl;
-		*/
 			if (points.second != glm::vec3(0, 0, 0)) {
 				imageData.imagePoints.push_back(points.first);
 				imageData.imageColors.push_back(points.second);
 			}
-
-		}
-		
+		}	
 	}
-
 	return imageData;
 }
 
@@ -484,32 +525,106 @@ int main()
 		// Create an ObjectManager instance 
 		ObjectManager objManager;
 
-		// Create a circle to move camera around center
+
+		/*
+
+		// create a complex scene with trees, bunnys and cats
+		// Uses many features of the simple raytracer but takes time to output
+		// Obj.z = left and right
+		// Obj.y = up and down
+		// Obj.x = 
+		
+		
+		// Initiate Scene with Camera and View Matrix
 		float radius = 50.0f; // Radius of the circle on which the camera moves
 		float radians = glm::radians(angleDegree); // Convert angle from degrees to radians
 		float circleX = radius * std::cos(radians); // Calculate x coordinate on the circle
 		float circleZ = radius * std::sin(radians); // Calculate z coordinate on the circle
+		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -50.f, circleZ), glm::vec3(glm::radians(30.f), glm::radians(angleDegree + 90), glm::radians(0.f)));
 
-		// create a triangle
-		/*
-		Triangle triangle;
-		triangle.pointOne = glm::vec4(5.0f, 0.0f, 0.0f, 1.0f);
-		triangle.pointTwo = glm::vec4(-5.0f, 0.0f, 0.0f, 1.0f);
-		triangle.pointThree = glm::vec4(0.0f, 8.0f, 0.0f, 1.0f);
-		std::vector<Triangle> triangles;
-		triangles.push_back(triangle);
-		objManager.objTriangles["triangle.obj"] = triangles;
-		objManager.objColors["triangle.obj"] = glm::vec3(1.f, 0.f, 0.f);
-		objManager.transformTriangles("triangle.obj", Transformation::changeObjPosition(glm::vec3(0.f, 0.f, 25.f)));
+		// 1 Cube Ground
+		objManager.loadObjFile("./obj/cube.obj");
+		objManager.setColor("./obj/cube.obj", glm::vec3(0.f, 1.f, 0.f));
+		objManager.transformTriangles("./obj/cube.obj", Transformation::scaleObj(35.0f, 35.0f, 35.0f));
+		objManager.transformTriangles("./obj/cube.obj", Transformation::changeObjPosition(glm::vec3(0.f, 10.f, 0.f)));
+		objManager.transformTriangles("./obj/cube.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("./obj/cube.obj");
+		
+		
+		// 2 Cats
+		objManager.loadObjFile("./obj/cat/cat.obj");
+		objManager.objProperties["./obj/cat/cat.obj"].y = 0.0f;
+		objManager.objTriangles["./obj/cat/cat.obj1"] = objManager.getTriangles("./obj/cat/cat.obj");
+		objManager.objProperties["./obj/cat/cat.obj1"] = objManager.objProperties["./obj/cat/cat.obj"];
+		// Cat 0
+		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::scaleObj(0.35f, 0.35f, 0.35f));
+		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::rotateObjX(glm::radians(-90.f)));
+		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::rotateObjY(glm::radians(125.f)));
+		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::changeObjPosition(glm::vec3(25.f, -25.f, -14.f)));
+		objManager.transformTriangles("./obj/cat/cat.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("./obj/cat/cat.obj");
+		//Cat 1
+		objManager.transformTriangles("./obj/cat/cat.obj1", Transformation::scaleObj(0.35f, 0.35f, 0.35f));
+		objManager.transformTriangles("./obj/cat/cat.obj1", Transformation::rotateObjX(glm::radians(-90.f)));
+		objManager.transformTriangles("./obj/cat/cat.obj1", Transformation::rotateObjY(glm::radians(70.f)));
+		objManager.transformTriangles("./obj/cat/cat.obj1", Transformation::changeObjPosition(glm::vec3(25.f, -25.f, 8.f)));
+		objManager.transformTriangles("./obj/cat/cat.obj1", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("./obj/cat/cat.obj1");
+		
+		// 1 Stanford Bunny
+		objManager.loadObjFile("./obj/stanford-bunny.obj");
+		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::scaleObj(50.f, 50.0f, 50.0f));
+		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::rotateObjX(glm::radians(181.f)));
+		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::rotateObjY(glm::radians(90.f)));
+
+		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::changeObjPosition(glm::vec3(25.f, -23.f, 0.f)));
+		objManager.transformTriangles("./obj/stanford-bunny.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("./obj/stanford-bunny.obj");
+		
+		// 3 Trees
+		objManager.loadObjFile("./obj/tree/tree.obj");
+		objManager.objProperties["./obj/tree/tree.obj"].y = 0.0f;
+		// Copy Tree onto Tree1 and 2
+		objManager.objTriangles["./obj/tree/tree.obj1"] = objManager.getTriangles("./obj/tree/tree.obj");
+		objManager.objProperties["./obj/tree/tree.obj1"] = objManager.objProperties["./obj/tree/tree.obj"];
+		objManager.objTriangles["./obj/tree/tree.obj2"] = objManager.getTriangles("./obj/tree/tree.obj");
+		objManager.objProperties["./obj/tree/tree.obj2"] = objManager.objProperties["./obj/tree/tree.obj"];
+		// Place Tree 0
+		objManager.transformTriangles("./obj/tree/tree.obj", Transformation::scaleObj(0.03f, 0.03f, 0.03f));
+		objManager.transformTriangles("./obj/tree/tree.obj", Transformation::rotateObjX(glm::radians(-90.f)));
+		objManager.transformTriangles("./obj/tree/tree.obj", Transformation::changeObjPosition(glm::vec3(-6.f, -25.f, -25.f)));
+		objManager.transformTriangles("./obj/tree/tree.obj", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("./obj/tree/tree.obj");
+		// Place Tree 1
+		objManager.transformTriangles("./obj/tree/tree.obj1", Transformation::scaleObj(0.035f, 0.035f, 0.035f));
+		objManager.transformTriangles("./obj/tree/tree.obj1", Transformation::rotateObjX(glm::radians(-90.f)));
+		objManager.transformTriangles("./obj/tree/tree.obj1", Transformation::changeObjPosition(glm::vec3(-6.f, -25.f, 0.f)));
+		objManager.transformTriangles("./obj/tree/tree.obj1", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("./obj/tree/tree.obj1");
+		// Place Tree 2
+		objManager.transformTriangles("./obj/tree/tree.obj2", Transformation::scaleObj(0.03f, 0.03f, 0.03f));
+		objManager.transformTriangles("./obj/tree/tree.obj2", Transformation::rotateObjX(glm::radians(-90.f)));
+		objManager.transformTriangles("./obj/tree/tree.obj2", Transformation::changeObjPosition(glm::vec3(-6.f, -25.f, 25.f)));
+		objManager.transformTriangles("./obj/tree/tree.obj2", glm::inverse(viewMatrix));
+		objManager.createBoundingHierarchy("./obj/tree/tree.obj2");
 		*/
 
-		// create viewMatrix
-		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -50.f, circleZ), glm::vec3(glm::radians(30.f), glm::radians(angleDegree + 90), glm::radians(0.f)));
-		// glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -100.f, circleZ), glm::vec3(glm::radians(50.f), glm::radians(angleDegree + 90.f), 0.f));
 
-
-		// Load Sphere Triangles and transform them
 		/*
+		// Scene: 6 Sphere Triangles transformed
+		 
+		// Inititate Scene
+		float radius = 100.0f; // Radius of the circle on which the camera moves
+		float radians = glm::radians(angleDegree); // Convert angle from degrees to radians
+		float circleX = radius * std::cos(radians); // Calculate x coordinate on the circle
+		float circleZ = radius * std::sin(radians); // Calculate z coordinate on the circle
+
+		// If you want to have interpolated spheres:
+		// Please uncomment this line in Phong Illumination function: 
+		// glm::vec3 n = interpolateNormal(*triangle, barycentricCoords); // normal
+		// And comment this line:
+		// glm::vec3 n = calculateTriangleNormal(triangle);
+
 		objManager.loadObjFile("sphere.obj");
 		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(0.f, 6.f, 30.f)));
 
@@ -537,106 +652,75 @@ int main()
 		objManager.objTriangles["sphere5.obj"] = objManager.getTriangles("sphere.obj");
 		objManager.objColors["sphere5.obj"] = glm::vec3(1.f, 0.f, 0.f);
 		objManager.transformTriangles("sphere5.obj", Transformation::changeObjPosition(glm::vec3(-6.f, -12.f, 0.f)));
+		objManager.createBoundingHierarchy("sphere.obj");
+		objManager.createBoundingHierarchy("sphere1.obj");
+		objManager.createBoundingHierarchy("sphere2.obj");
+		objManager.createBoundingHierarchy("sphere3.obj");
+		objManager.createBoundingHierarchy("sphere4.obj");
+		objManager.createBoundingHierarchy("sphere5.obj");
 		*/
 
 
-		/*
-		objManager.loadObjFile("bunny.obj");
-		objManager.transformTriangles("bunny.obj", Transformation::scaleObj(3.0f, 3.0f, 3.0f));
-		objManager.transformTriangles("bunny.obj", Transformation::rotateObjX(110));
-		objManager.transformTriangles("bunny.obj", Transformation::rotateObjY(90));
-
-		objManager.transformTriangles("bunny.obj", Transformation::changeObjPosition(glm::vec3(18.f, -30.f, 10.f)));
-		objManager.transformTriangles("bunny.obj", glm::inverse(viewMatrix));
-		objManager.createBoundingHierarchy("bunny.obj");
-		*/
-		/*
-		objManager.loadObjFile("chair.obj");
-		objManager.transformTriangles("chair.obj", Transformation::scaleObj(30.f, 30.0f, 30.0f));
-		objManager.transformTriangles("chair.obj", Transformation::rotateObjX(glm::radians(-90.f)));
-		objManager.transformTriangles("chair.obj", Transformation::rotateObjY(glm::radians(181.f)));
-		// objManager.transformTriangles("chair.obj", Transformation::rotateObjZ(glm::radians(90.f)));
-
-		objManager.transformTriangles("chair.obj", Transformation::changeObjPosition(glm::vec3(8.f, -25.f, -15.f)));
-		objManager.transformTriangles("chair.obj", glm::inverse(viewMatrix));
-		objManager.createBoundingHierarchy("chair.obj");
-		*/
 		
-		objManager.loadObjFile("./obj/cat/cat.obj");
-		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::scaleObj(0.3f, 0.3f, 0.3f));
-		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::rotateObjX(glm::radians(-90.f)));
-		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::rotateObjY(glm::radians(181.f)));
-		// objManager.transformTriangles("chair.obj", Transformation::rotateObjZ(glm::radians(90.f)));
+		/*
+		// Big Cat Sideways for testing purposes
 
-		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::changeObjPosition(glm::vec3(8.f, -25.f, -15.f)));
+		// Inititate Scene with view Matrix
+		float radius = 50.0f; // Radius of the circle on which the camera moves
+		float radians = glm::radians(angleDegree); // Convert angle from degrees to radians
+		float circleX = radius * std::cos(radians); // Calculate x coordinate on the circle
+		float circleZ = radius * std::sin(radians); // Calculate z coordinate on the circle
+		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -50.f, circleZ), glm::vec3(glm::radians(30.f), glm::radians(angleDegree + 90), glm::radians(0.f)));
+
+		objManager.loadObjFile("./obj/cat/cat.obj");
+		objManager.objProperties["./obj/cat/cat.obj"].y = 0.0f;
+		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::scaleObj(0.5f, 0.5f, 0.5f));
+		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::rotateObjX(glm::radians(-90.f)));
+		// objManager.transformTriangles("./obj/cat/cat.obj", Transformation::rotateObjY(glm::radians(90.f)));
+		// objManager.transformTriangles("chair.obj", Transformation::rotateObjZ(glm::radians(90.f)));
+		objManager.transformTriangles("./obj/cat/cat.obj", Transformation::changeObjPosition(glm::vec3(14.f, -20.f, -8.f)));
 		objManager.transformTriangles("./obj/cat/cat.obj", glm::inverse(viewMatrix));
 		objManager.createBoundingHierarchy("./obj/cat/cat.obj");
-		
-		/*
-		objManager.loadObjFile("cornell_box.obj");
-		objManager.transformTriangles("cornell_box.obj", Transformation::scaleObj(10.f, 10.0f, 10.0f));
-		// objManager.transformTriangles("chair.obj", Transformation::rotateObjX(glm::radians(181.f)));
-		// objManager.transformTriangles("chair.obj", Transformation::rotateObjY(glm::radians(90.f)));
-
-		objManager.transformTriangles("cornell_box.obj", Transformation::changeObjPosition(glm::vec3(8.f, -25.f, -15.f)));
-		objManager.transformTriangles("cornell_box.obj", glm::inverse(viewMatrix));
-		objManager.createBoundingHierarchy("cornell_box.obj");
 		*/
 		
-		/*
-		objManager.loadObjFile("10438_Circular_Grass_Patch_v1_iterations-2.obj");
-		objManager.transformTriangles("10438_Circular_Grass_Patch_v1_iterations-2.obj", Transformation::scaleObj(0.1f, 0.1f, 0.1f));
-		objManager.transformTriangles("10438_Circular_Grass_Patch_v1_iterations-2.obj", Transformation::rotateObjX(glm::radians(181.f)));
-		objManager.transformTriangles("10438_Circular_Grass_Patch_v1_iterations-2.obj", Transformation::rotateObjY(glm::radians(90.f)));
-
-		objManager.transformTriangles("10438_Circular_Grass_Patch_v1_iterations-2.obj", Transformation::changeObjPosition(glm::vec3(8.f, -30.f, 5.f)));
-		objManager.transformTriangles("10438_Circular_Grass_Patch_v1_iterations-2.obj", glm::inverse(viewMatrix));
-		objManager.createBoundingHierarchy("10438_Circular_Grass_Patch_v1_iterations-2.obj");
-		*/
-		
-		objManager.loadObjFile("./obj/stanford-bunny.obj");
-		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::scaleObj(60.f, 60.0f, 60.0f));
-		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::rotateObjX(glm::radians(181.f)));
-		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::rotateObjY(glm::radians(90.f)));
-
-		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::changeObjPosition(glm::vec3(8.f, -25.f, 5.f)));
-		objManager.transformTriangles("./obj/stanford-bunny.obj", glm::inverse(viewMatrix));
-		objManager.createBoundingHierarchy("./obj/stanford-bunny.obj");
 		
 
-		/*
-		objManager.loadObjFile("./obj/house/house.obj");
-		objManager.transformTriangles("./obj/house/house.obj", Transformation::scaleObj(0.1f, 0.1f, 0.1f));
-		objManager.transformTriangles("./obj/house/house.obj", Transformation::rotateObjX(glm::radians(181.f)));
-		objManager.transformTriangles("./obj/house/house.obj", Transformation::rotateObjY(glm::radians(90.f)));
 
-		objManager.transformTriangles("./obj/house/house.obj", Transformation::changeObjPosition(glm::vec3(25.f, -30.f, 0.f)));
-		objManager.transformTriangles("./obj/house/house.obj", glm::inverse(viewMatrix));
-		objManager.createBoundingHierarchy("./obj/house/house.obj");
-		*/
 
+		
+		// One Sample Cube for Testing
+		
+		// Inititate Scene with view Matrix
+		float radius = 100.0f; // Radius of the circle on which the camera moves
+		float radians = glm::radians(angleDegree); // Convert angle from degrees to radians
+		float circleX = radius * std::cos(radians); // Calculate x coordinate on the circle
+		float circleZ = radius * std::sin(radians); // Calculate z coordinate on the circle
+		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, 0.f, circleZ), glm::vec3(glm::radians(0.f), glm::radians(angleDegree + 90), glm::radians(0.f)));
 
 		
 		objManager.loadObjFile("cube.obj");
-		// objManager.objTriangles["cube1.obj"] = objManager.getTriangles("cube.obj");
-		objManager.setColor("cube.obj", glm::vec3(0.f, 1.f, 0.f));
-		objManager.transformTriangles("cube.obj", Transformation::scaleObj(35.0f, 35.0f, 35.0f));
-		// objManager.transformTriangles("cube.obj", Transformation::rotateObjZ(-10.f));
-		// objManager.transformTriangles("cube.obj", Transformation::changeObjPosition(glm::vec3(0.f, 85.f, 0.f)));
-		objManager.transformTriangles("cube.obj", Transformation::changeObjPosition(glm::vec3(0.f, 10.f, 0.f)));
+		// objManager.setColor("cube.obj", glm::vec3(1.f, 1.f, 0.f));
+		objManager.transformTriangles("cube.obj", Transformation::scaleObj(20.0f, 20.0f, 20.0f));
+		objManager.transformTriangles("cube.obj", Transformation::rotateObjY(glm::radians(25.f)));
+		// objManager.transformTriangles("cube.obj", Transformation::mirrorObj(true, false, false));
+		// objManager.transformTriangles("cube.obj", Transformation::changeObjPosition(glm::vec3(0.f, 10.f, 0.f)));
 		objManager.transformTriangles("cube.obj", glm::inverse(viewMatrix));
 		objManager.createBoundingHierarchy("cube.obj");
-		/*
-		objManager.setColor("cube1.obj", glm::vec3(0.f, 0.f, 1.f));
-		objManager.transformTriangles("cube1.obj", Transformation::scaleObj(3.0f, 3.0f, 3.0f));
-		objManager.transformTriangles("cube1.obj", Transformation::changeObjPosition(glm::vec3(15.f, -38.f, -10.f)));
-		// objManager.transformTriangles("cube1.obj", Transformation::changeObjPosition(glm::vec3(50.f, 5.f, -20.f)));
-		objManager.transformTriangles("cube1.obj", glm::inverse(viewMatrix));
-		objManager.createBoundingHierarchy("cube1.obj"); */
 		
-		/*
-		// Load Cube Triangles and scale it
 
+
+
+		/*
+		// Scene with 4 Cubes in different colors
+
+		// Inititate Scene with view Matrix
+		float radius = 100.0f; // Radius of the circle on which the camera moves
+		float radians = glm::radians(angleDegree); // Convert angle from degrees to radians
+		float circleX = radius * std::cos(radians); // Calculate x coordinate on the circle
+		float circleZ = radius * std::sin(radians); // Calculate z coordinate on the circle
+		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, 0.f, circleZ), glm::vec3(glm::radians(0.f), glm::radians(angleDegree + 90), glm::radians(0.f)));
+
+		// Load Cube Triangles and scale it
 		objManager.loadObjFile("cube.obj");
 		objManager.setColor("cube.obj", glm::vec3(1.f, 1.f, 0.f));
 		objManager.transformTriangles("cube.obj", Transformation::scaleObj(10.0f, 10.0f, 10.0f));
@@ -656,19 +740,26 @@ int main()
 
 		// transform position of original cube
 		objManager.transformTriangles("cube.obj", Transformation::changeObjPosition(glm::vec3(0.f, 15.f, -15.f)));
-
+		
 		// Bring Obj Models into ViewPosition
 		objManager.transformTriangles("cube.obj", glm::inverse(viewMatrix));
 		objManager.transformTriangles("cube1.obj", glm::inverse(viewMatrix));
 		objManager.transformTriangles("cube2.obj", glm::inverse(viewMatrix));
 		objManager.transformTriangles("cube3.obj", glm::inverse(viewMatrix));
+		
+		// Create Bounding Volume Hierarchy for Cubes
+		objManager.createBoundingHierarchy("cube.obj");
+		objManager.createBoundingHierarchy("cube1.obj");
+		objManager.createBoundingHierarchy("cube2.obj");
+		objManager.createBoundingHierarchy("cube3.obj");
 		*/
+		
 
 		// Draw Image
 		glm::vec2 imageSize(600, 400);
 		//glm::vec4 lightPos(-200.0f, -300.0f, -1000.4f, 1.0f);
 		
-		glm::vec4 lightPos(500.0f, -200.0f, -200.f, 1.0f);
+		glm::vec4 lightPos(500.0f, -300.0f, -200.f, 1.0f);
 		
 		lightPos = glm::inverse(viewMatrix) * lightPos;
 		// lightPos.z = -lightPos.z;
@@ -685,7 +776,7 @@ int main()
 		// Print the time taken 
 		std::cout << "Time taken for Intersection: " << elapsed.count() << " seconds " << std::endl;
 
-		drawImage(imageSize, points.imagePoints, points.imageColors, angleDegree, true, false);
+		drawImage(imageSize, points.imagePoints, points.imageColors, angleDegree, true, true);
 
 	}
 }

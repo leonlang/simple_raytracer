@@ -62,7 +62,11 @@ void ObjectManager::loadObjFile(const std::string& objFilename) {
     tinyobj::ObjReader reader;
 
     objColors[objFilename] = glm::vec3(1.f,0.f,0.f);
-
+    // default parameters for objects
+    float ambientStrength = 0.2f;
+    float specularStrength = 0.5f;
+    float shininess = 15.0f;
+    objProperties[objFilename] = glm::vec3(ambientStrength, specularStrength, shininess);
     if (!reader.ParseFromFile(inputFile)) {
         if (!reader.Error().empty()) {
             std::cerr << "TinyObjReader: " << reader.Error();
@@ -78,20 +82,22 @@ void ObjectManager::loadObjFile(const std::string& objFilename) {
     std::vector<Triangle> triangles;
 
     // New
-    std::unordered_map<std::string, unsigned char*> textureData;
-    std::unordered_map<std::string, glm::ivec2> textureDimensions;
+    // std::unordered_map<std::string, unsigned char*> textureData;
+    // std::unordered_map<std::string, glm::ivec2> textureDimensions;
     for (const auto& material : materials) {
         if (!material.diffuse_texname.empty()) {
             int width, height, channels;
             std::string texturePath = material.diffuse_texname;
-            unsigned char* data = stbi_load(texturePath.c_str(), &width, &height, &channels, 3);
-            // std::cout << material.diffuse_texname;
-            if (data) {
-                textureData[texturePath] = data;
-                textureDimensions[texturePath] = glm::ivec2(width, height);
-            }
-            else {
-                std::cerr << "Failed to load texture: " << texturePath << std::endl;
+            if (textureData.find(texturePath) == textureData.end()) {
+                unsigned char* data = stbi_load(texturePath.c_str(), &width, &height, &channels, 3);
+                // std::cout << material.diffuse_texname;
+                if (data) {
+                    textureData[texturePath] = data;
+                    textureDimensions[texturePath] = glm::ivec2(width, height);
+                }
+                else {
+                    std::cerr << "Failed to load texture: " << texturePath << std::endl;
+                }
             }
         }
     }
@@ -106,6 +112,8 @@ void ObjectManager::loadObjFile(const std::string& objFilename) {
             Triangle tria;
             for (size_t v = 0; v < fv; v++) {
                 if (fv == 3) {
+                    std::string texturePath;
+                    glm::vec2 texCoordinate(0,0);
                     glm::vec4 vertex(0.0f, 0.0f, 0.0f, 1.0f);
                     glm::vec3 vnormal(0.0f, 0.0f, 0.0f);
                     glm::vec3 vcolor(1.0f, 1.0f, 1.0f);
@@ -130,7 +138,7 @@ void ObjectManager::loadObjFile(const std::string& objFilename) {
                         // Use Texture for Color
                         int materialID = shapes[s].mesh.material_ids[f];
                         if (materialID >= 0 && materialID < int(materials.size())) {
-                            std::string texturePath = materials[materialID].diffuse_texname;
+                            texturePath = materials[materialID].diffuse_texname;
                             if (!texturePath.empty() && textureData.count(texturePath)) {
                                 unsigned char* texData = textureData[texturePath];
                                 glm::ivec2 texDim = textureDimensions[texturePath];
@@ -139,10 +147,11 @@ void ObjectManager::loadObjFile(const std::string& objFilename) {
                                 if (texDim.x > 0 && texDim.y > 0 && texData) {
                                     int u = static_cast<int>(std::floor(tx * texDim.x)) % texDim.x;
                                     int v = static_cast<int>(std::floor((1.0f - ty) * texDim.y)) % texDim.y;
-
                                     // Ensure u and v are non-negative
                                     u = (u + texDim.x) % texDim.x;
                                     v = (v + texDim.y) % texDim.y;
+
+                                    texCoordinate = glm::vec2(u, v);
 
                                     size_t texIndex = (v * texDim.x + u) * 3;
                                     vcolor.x = texData[texIndex + 0] / 255.0f;
@@ -169,17 +178,21 @@ void ObjectManager::loadObjFile(const std::string& objFilename) {
                     if (v == 0) {
                         tria.pointOne = vertex;
                         tria.normalOne = vnormal;
+                        tria.colorOneCoordinate = texCoordinate;
                         tria.color = vcolor;
+                        // texture Name is identical for the whole Triangle so I initialize it only once
+                        tria.textureName = texturePath;
+
                     }
                     if (v == 1) {
                         tria.pointTwo = vertex;
                         tria.normalTwo = vnormal;
-                        tria.color = vcolor;
+                        tria.colorTwoCoordinate = texCoordinate;
                     }
                     if (v == 2) {
                         tria.pointThree = vertex;
                         tria.normalThree = vnormal;
-                        tria.color = vcolor;
+                        tria.colorThreeCoordinate = texCoordinate;
                     }
                 }
             }
