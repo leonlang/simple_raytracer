@@ -512,13 +512,7 @@ ImageData sendRaysAndIntersectPointsColors(const glm::vec2& imageSize, const glm
 
 int main()
 {
-	/*
-	std::string filePath = "uyhh44.png"; // Image file path
-	int x = 50; // X-coordinate
-	int y = 100; // Y-coordinate
 
-	getColorAtCoordinates(filePath, x, y);
-	*/
 	// save images at different degrees based on camera
 	for (float angleDegree = 0; angleDegree < 360; angleDegree = angleDegree + 10) {
 

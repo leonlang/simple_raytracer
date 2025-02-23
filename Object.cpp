@@ -4,58 +4,23 @@
 #include "stb_image.h" // Include an image loading library like stb_image
 
 
-// Default constructor implementation 
+// Default Triangle constructor  
 Triangle::Triangle() 
     : pointOne(0.0f), pointTwo(0.0f), pointThree(0.0f), normalOne(0.0f), normalTwo(0.0f), normalThree(0.0f) {}
 
-// Parameterized constructor implementation
+// Parameterized Triangle constructor 
 Triangle::Triangle(glm::vec4 p1, glm::vec4 p2, glm::vec4 p3, glm::vec3 n1, glm::vec3 n2, glm::vec3 n3)
     : pointOne(p1), pointTwo(p2), pointThree(p3), normalOne(n1), normalTwo(n2), normalThree(n3) {}
 
-glm::vec3 Triangle::calculateNormal() const {
-    glm::vec3 v1 = glm::vec3(pointTwo) - glm::vec3(pointOne);
-    glm::vec3 v2 = glm::vec3(pointThree) - glm::vec3(pointOne);
-    glm::vec3 normal = glm::cross(v1, v2);
-    return glm::normalize(normal);
-}
 
 // Ray class implementation 
 Ray::Ray(glm::vec3 d) 
     : origin(0.0f, 0.0f, 0.0f), direction(d) {}
 
-void getColorAtCoordinates(const std::string& filePath, int x, int y) {
-    int width, height, channels;
 
-    // Load the image
-    unsigned char* data = stbi_load(filePath.c_str(), &width, &height, &channels, 0);
-    if (!data) {
-        std::cerr << "Failed to load image: " << filePath << std::endl;
-        return;
-    }
-
-    // Ensure the coordinates are within the image bounds
-    if (x < 0 || x >= width || y < 0 || y >= height) {
-        std::cerr << "Coordinates (" << x << ", " << y << ") are out of bounds!" << std::endl;
-        stbi_image_free(data);
-        return;
-    }
-
-    // Calculate the index for the pixel in the array
-    int index = (y * width + x) * channels;
-
-    // Print color values
-    std::cout << "Color at (" << x << ", " << y << "): " << std::endl;
-    std::cout << "  Red:   " << static_cast<int>(data[index]) << std::endl;
-    if (channels > 1) std::cout << "  Green: " << static_cast<int>(data[index + 1]) << std::endl;
-    if (channels > 2) std::cout << "  Blue:  " << static_cast<int>(data[index + 2]) << std::endl;
-    if (channels == 4) std::cout << "  Alpha: " << static_cast<int>(data[index + 3]) << std::endl;
-
-    // Free the image memory
-    stbi_image_free(data);
-} 
-
-// ObjectManager class implementation
-// https://github.com/tinyobjloader/tinyobjloader?tab=readme-ov-file
+// Complex Triangle Structures with OBJ
+// Uses Library tinyobjloader
+// https://github.com/tinyobjloader/tinyobjloader
 // Code is from readme File (Example code (New Object Oriented API)) and slightly modified to fit my implementation
 void ObjectManager::loadObjFile(const std::string& objFilename) {
     std::string inputFile = objFilename;
@@ -204,13 +169,17 @@ void ObjectManager::loadObjFile(const std::string& objFilename) {
     objTriangles[objFilename] = triangles;
 }
 
+// returns triangles from specific obj based on obj name
 const std::vector<Triangle>& ObjectManager::getTriangles(const std::string& objFilename) const {
     return objTriangles.at(objFilename);
 }
+
+// set triangles from specific obj based on obj name
 void ObjectManager::setTriangles(const std::string& objFilename, const std::vector<Triangle>& triangles) {
     objTriangles[objFilename] = triangles; 
 }
 
+// multiplies all triangles from specific obj with a matrix
 void ObjectManager::transformTriangles(const std::string& objFilename, const glm::mat4& matrix) {
     std::vector<Triangle>& triangles = objTriangles[objFilename];
     for (Triangle& t : triangles) {
@@ -219,6 +188,8 @@ void ObjectManager::transformTriangles(const std::string& objFilename, const glm
         t.pointThree = matrix * t.pointThree;
     }
 } 
+
+// check first Triangle point for which coordinate is bigger
 bool compareXPointsOfTriangle(const Triangle& a, const Triangle& b) {
     return a.pointOne.x < b.pointOne.x;
 }
@@ -307,9 +278,11 @@ void  ObjectManager::createBoundingHierarchy(const std::string& objFilename) {
     boundingVolumeHierarchy[objFilename] = root;
 }
 
+// set Color for Object
 void ObjectManager::setColor(const std::string& objFilename, const glm::vec3& color) {
     objColors[objFilename] = color; 
 } 
+// return Color from Object
 glm::vec3 ObjectManager::getColor(const std::string& objFilename) const {
     return objColors.at(objFilename); 
 }
