@@ -345,7 +345,6 @@ bool shadowIntersection(ObjectManager* objManager, const std::string& currentObj
 // Generate multiple light Sources in near distance to each other
 // Tone Mapping
 // Concept: https://64.github.io/tonemapping/
-
 glm::vec3 softShadow(int lightAmount,ObjectManager* objManager, const std::string& objFilename,const Triangle* triangle, const Ray* ray, const glm::vec3& lightPos, const glm::vec3& lightColor, const glm::vec3& objColor, const float& distance) {
 	glm::vec3 testColor = objColor;
 	if (!triangle->textureName.empty()) {
@@ -363,6 +362,7 @@ glm::vec3 softShadow(int lightAmount,ObjectManager* objManager, const std::strin
 	glm::vec3 color(0.0f,0.0f,0.0f);
 	glm::vec3 lightPosChanged = lightPos;
 	// Generate the lightPos based on the last lightPos and change always one coordinate
+	
 	for (int i = 0; i < lightAmount; i++) {
 		bool isShadow = shadowIntersection(objManager, objFilename, lightPosChanged, distance, *ray);
 		glm::vec3 colorPhong = phongIllumination(triangle, ray, lightPosChanged, lightColor, testColor, objManager->objProperties[objFilename][0], objManager->objProperties[objFilename][1], objManager->objProperties[objFilename][2], distance);
@@ -380,17 +380,22 @@ glm::vec3 softShadow(int lightAmount,ObjectManager* objManager, const std::strin
 			lightPosChanged.z += 3.0f;
 			break;
 		}
-
 	}
+	
+	// Disable Shadows for testing purposes
+	// color = phongIllumination(triangle, ray, lightPosChanged, lightColor, testColor, objManager->objProperties[objFilename][0], objManager->objProperties[objFilename][1], objManager->objProperties[objFilename][2], distance);
+
 
 	// Reinhardt Tone Mapping 
 	// color = color / (color + 1.0f);
-	color = color / (color + 0.1f);
+	color = color / (color + 0.5f);
+	// color = color / (color + 0.1f);
 	// color = color / (color + 4.0f);
 
 	// Add Gamma
-	glm::vec3 gamma (2.2f, 2.2f, 2.2f);
-	// color = glm::pow(color, gamma);
+	glm::vec3 gamma(1.1f, 1.1f, 1.1f);
+	// glm::vec3 gamma (2.2f, 2.2f, 2.2f);
+	color = glm::pow(color, gamma);
 
 	return color;
 }
@@ -406,12 +411,13 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(const Ray& ray, ObjectManager* o
 		// std::cout << objFilename << pair.second.size();
 
 		// const std::vector<Triangle>& triangles = pair.second;
+		
 		/*
 		// Old Intersection for Speed Testing Purposes with OneBox and goes through all Triangles in an object
-		if (intersectRayAabb(ray.direction, objManager.minBox[objFilename], objManager.maxBox[objFilename])) {
-
-			for (int k = 0; k < triangles.size(); k++) {
-			*/
+		if (intersectRayAabb(ray.direction, objManager->minBox[objFilename], objManager->maxBox[objFilename])) {
+			const std::vector<Triangle>& trianglesBox = pair.second;
+			for (int k = 0; k < trianglesBox.size(); k++) {
+		*/	
 		// std::cout << objFilename << std::endl;
 		const std::vector<Triangle>& trianglesBox = boundingBoxIntersection(objManager->boundingVolumeHierarchy[objFilename], ray);
 
@@ -531,14 +537,10 @@ int main()
 		ObjectManager objManager;
 
 
-		/*
-
+		
+		
 		// create a complex scene with trees, bunnys and cats
 		// Uses many features of the simple raytracer but takes time to output
-		// Obj.z = left and right
-		// Obj.y = up and down
-		// Obj.x = 
-		
 		
 		// Initiate Scene with Camera and View Matrix
 		float radius = 50.0f; // Radius of the circle on which the camera moves
@@ -579,6 +581,7 @@ int main()
 		
 		// 1 Stanford Bunny
 		objManager.loadObjFile("./obj/stanford-bunny.obj");
+		objManager.setColor("./obj/stanford-bunny.obj", glm::vec3(0.9, 0.9, 0.9));
 		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::scaleObj(50.f, 50.0f, 50.0f));
 		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::rotateObjX(glm::radians(181.f)));
 		objManager.transformTriangles("./obj/stanford-bunny.obj", Transformation::rotateObjY(glm::radians(90.f)));
@@ -613,12 +616,15 @@ int main()
 		objManager.transformTriangles("./obj/tree/tree.obj2", Transformation::changeObjPosition(glm::vec3(-6.f, -25.f, 25.f)));
 		objManager.transformTriangles("./obj/tree/tree.obj2", glm::inverse(viewMatrix));
 		objManager.createBoundingHierarchy("./obj/tree/tree.obj2");
-		*/
+		
 
 
 		/*
 		// Scene: 6 Sphere Triangles transformed
 		 
+		// To use this comment out: lightPos = glm::inverse(viewMatrix) * lightPos;
+		// Which is found below
+
 		// Inititate Scene
 		float radius = 100.0f; // Radius of the circle on which the camera moves
 		float radians = glm::radians(angleDegree); // Convert angle from degrees to radians
@@ -634,27 +640,27 @@ int main()
 		objManager.loadObjFile("sphere.obj");
 		objManager.transformTriangles("sphere.obj", Transformation::changeObjPosition(glm::vec3(0.f, 6.f, 30.f)));
 
-		// Load 5 more Spheres for time Testing
+		// Load  more Spheres for time Testing
 		objManager.objTriangles["sphere1.obj"] = objManager.getTriangles("sphere.obj");
 		objManager.objColors["sphere1.obj"] = glm::vec3(1.f, 0.f, 0.f);
 		objManager.transformTriangles("sphere1.obj", Transformation::changeObjPosition(glm::vec3(6.f, 0.f, 0.f)));
 
-		// Load 8 more Spheres for time Testing
+		// Load more Spheres for time Testing
 		objManager.objTriangles["sphere2.obj"] = objManager.getTriangles("sphere.obj");
 		objManager.objColors["sphere2.obj"] = glm::vec3(1.f, 0.f, 0.f);
 		objManager.transformTriangles("sphere2.obj", Transformation::changeObjPosition(glm::vec3(-6.f, 0.f, 0.f)));
 
-		// Load 8 more Spheres for time Testing
+		// Load more Spheres for time Testing
 		objManager.objTriangles["sphere3.obj"] = objManager.getTriangles("sphere.obj");
 		objManager.objColors["sphere3.obj"] = glm::vec3(1.f, 0.f, 0.f);
 		objManager.transformTriangles("sphere3.obj", Transformation::changeObjPosition(glm::vec3(0.f, -12.f, 0.f)));
 
-		// Load 8 more Spheres for time Testing
+		// Load more Spheres for time Testing
 		objManager.objTriangles["sphere4.obj"] = objManager.getTriangles("sphere.obj");
 		objManager.objColors["sphere4.obj"] = glm::vec3(1.f, 0.f, 0.f);
 		objManager.transformTriangles("sphere4.obj", Transformation::changeObjPosition(glm::vec3(6.f, -12.f, 0.f)));
 
-		// Load 8 more Spheres for time Testing
+		// Load more Spheres for time Testing
 		objManager.objTriangles["sphere5.obj"] = objManager.getTriangles("sphere.obj");
 		objManager.objColors["sphere5.obj"] = glm::vec3(1.f, 0.f, 0.f);
 		objManager.transformTriangles("sphere5.obj", Transformation::changeObjPosition(glm::vec3(-6.f, -12.f, 0.f)));
@@ -717,7 +723,7 @@ int main()
 
 
 
-		
+		/*
 		// Scene with 4 Cubes in different colors
 
 		// Inititate Scene with view Matrix
@@ -760,7 +766,7 @@ int main()
 		objManager.createBoundingHierarchy("cube1.obj");
 		objManager.createBoundingHierarchy("cube2.obj");
 		objManager.createBoundingHierarchy("cube3.obj");
-		
+		*/
 		
 
 		// Draw Image

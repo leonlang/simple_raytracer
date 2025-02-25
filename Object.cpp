@@ -37,9 +37,9 @@ void ObjectManager::loadObjFile(const std::string& objFilename) {
             std::cerr << "TinyObjReader: " << reader.Error();
         }
     }
-    if (!reader.Warning().empty()) {
-        std::cout << "TinyObjReader: " << reader.Warning();
-    }
+    // if (!reader.Warning().empty()) {
+    //     std::cout << "TinyObjReader: " << reader.Warning();
+    // }
     auto& attrib = reader.GetAttrib();
     auto& shapes = reader.GetShapes();
     auto& materials = reader.GetMaterials();
