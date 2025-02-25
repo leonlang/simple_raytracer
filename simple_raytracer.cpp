@@ -17,7 +17,13 @@ using namespace cimg_library;
 #include "tiny_obj_loader.h"
 
 // Notes:
-// Each Function presents an introduction. For example: Triangle Intersection corresponds to the same section in the report
+// Each covered Function presents an introduction. For example: Triangle Intersection corresponds to the same section in the report
+// For Vec Math the library glm is used: https://github.com/g-truc/glm
+// For OBJ Objects the library tinyObjLoader is used: https://github.com/tinyobjloader/tinyobjloader
+// For Image Reading and Output the libraries stb: https://github.com/nothings/stb
+// and CImg: https://cimg.eu/ are used.
+
+
 
 struct ImageData { std::vector<glm::vec2> imagePoints; std::vector<glm::vec3> imageColors; };
 
@@ -109,6 +115,8 @@ glm::vec3 calculateBarycentricCoords(const Triangle* triangle, const glm::vec3& 
 	// std::cout << "1:" << u << "2:" << v << "3:" << w << std::endl;
 	return glm::vec3(u, v, w);
 }
+// Texture Mapping
+// Concept: https://codeplea.com/triangular-interpolation
 // Function to compute the interpolated texture coordinate
 glm::vec2 getTextureCoordinate(const glm::vec3& barycentricCoords, const glm::vec2& texCoordA, const glm::vec2& texCoordB, const glm::vec2& texCoordC) {
 	// Interpolate the texture coordinates using the barycentric coordinates
@@ -120,6 +128,7 @@ glm::vec2 getTextureCoordinate(const glm::vec3& barycentricCoords, const glm::ve
 }
 
 // Phong Shading
+// Concept: https://cg.informatik.uni-freiburg.de/course\_notes/graphics\_02\_shading.pdf
 glm::vec3 interpolateNormal(const Triangle& triangle, const glm::vec3& barycentricCoords) {
 	// By multiplying each vertex normal by its corresponding barycentric coordinate, 
 	// I am weighting each normal by how much influence that vertex has at the point of interest.
@@ -190,7 +199,8 @@ glm::vec3 phongIllumination(const Triangle* triangle, const Ray* ray, const glm:
 	return diffuse + specular + ambient;
 }
 
-
+// Slab Test
+// Concept: https://cg.informatik.uni-freiburg.de/course_notes/graphics_01_raycasting.pdf
 bool intersectRayAabb(const glm::vec3& direction, const glm::vec3& minBox, const glm::vec3& maxBox) {
 	// Calculate the t values for each pair of planes
 
@@ -237,11 +247,10 @@ bool intersectRayAabb(const glm::vec3& direction, const glm::vec3& minBox, const
 	return true;
 }
 
+// Slab Test with Ray not at Origin. Needed for Shadow Intersection
+// Concept: https://cg.informatik.uni-freiburg.de/course_notes/graphics_01_raycasting.pdf
 bool intersectRayAabbNoOrigin(const Ray& ray, const glm::vec3& minBox, const glm::vec3& maxBox) {
 	// Calculate the t values for each pair of planes
-
-	// origin is always at 0 because we are at view Space so we don't need to include it in 
-	// the calculations
 
 	// x-slab intersection t
 	float minXT = (minBox.x - ray.origin.x) / ray.direction.x;
@@ -282,6 +291,8 @@ bool intersectRayAabbNoOrigin(const Ray& ray, const glm::vec3& minBox, const glm
 
 	return true;
 }
+// Bounding Box Volume Hierarchy
+// Boxes get traversed as a binary tree and intersected at each level
 std::vector<Triangle> boundingBoxIntersection(Node* node, const Ray& ray) {
 	// Only Collect Triangles if Ray and Box have intersection
 	if (!intersectRayAabbNoOrigin(ray, node->minBox, node->maxBox)) {
@@ -305,24 +316,17 @@ std::vector<Triangle> boundingBoxIntersection(Node* node, const Ray& ray) {
 	}
 }
 
+// Shadow Intersection
+// Sends out Ray from intersection to light source. If object is in between, there is shadow
 bool shadowIntersection(ObjectManager* objManager, const std::string& currentObjFilename, const glm::vec3& lightPos, const float& fDistance, const Ray& ray) {
 	for (const auto& pairShadow : objManager->objTriangles) {
 		const std::string& shadowObjFilename = pairShadow.first;
-
-		/*glm::vec3 P = ray.origin + ray.direction * fDistance;
-		glm::vec3 lightDir = glm::normalize(lightPos - P);
-
-		Ray shadowRay(lightDir);
-		shadowRay.origin = P; // + eps * normalAtP; // offset a bit above the surface
-		// shadowRay.direction = lightDir; */
-
 		// const std::vector<Triangle>& trianglesBox = pairShadow.second;
 		Ray shadowRay(lightPos - ray.direction * fDistance);
 		shadowRay.origin = ray.direction * fDistance;
 		// shadowRay.origin += ray.direction * 0.001f; // add small value to prevent shadowAcne
 		const std::vector<Triangle>& trianglesBox = boundingBoxIntersection(objManager->boundingVolumeHierarchy[shadowObjFilename], shadowRay);
 
-		// if (intersectRayAabbNoOrigin(shadowRay, objManager.minBox[shadowObjFilename], objManager.maxBox[shadowObjFilename])) {
 			// Prevents intersection between same object
 			if (shadowObjFilename != currentObjFilename) {
 				for (int j = 0; j < trianglesBox.size(); j++) {
@@ -330,7 +334,6 @@ bool shadowIntersection(ObjectManager* objManager, const std::string& currentObj
 					float shadowDistance = rayTriangleIntersection(&shadowRay, &trianglesBox[j]);
 					if (shadowDistance != -INFINITY) {
 						return true;
-					// }
 				}
 			}
 		}
@@ -338,8 +341,11 @@ bool shadowIntersection(ObjectManager* objManager, const std::string& currentObj
 	return false;
 }
 
+// Soft Shadows
 // Generate multiple light Sources in near distance to each other
-// And use tone mapping
+// Tone Mapping
+// Concept: https://64.github.io/tonemapping/
+
 glm::vec3 softShadow(int lightAmount,ObjectManager* objManager, const std::string& objFilename,const Triangle* triangle, const Ray* ray, const glm::vec3& lightPos, const glm::vec3& lightColor, const glm::vec3& objColor, const float& distance) {
 	glm::vec3 testColor = objColor;
 	if (!triangle->textureName.empty()) {
@@ -389,6 +395,8 @@ glm::vec3 softShadow(int lightAmount,ObjectManager* objManager, const std::strin
 	return color;
 }
 
+// Ray Intersection with Boxes and Triangles
+// Combines the Methods for Slab Test, Bounding Box Volume Hierarchy and Triangle Intersection
 std::pair<glm::vec2, glm::vec3> rayIntersection(const Ray& ray, ObjectManager* objManager, const int& pointX,const int& pointY, const glm::vec3& lightPos) {
 
 	glm::vec3 colorPoint(0, 0, 0);
@@ -442,6 +450,8 @@ std::pair<glm::vec2, glm::vec3> rayIntersection(const Ray& ray, ObjectManager* o
 	return { imagePoint, colorPoint };
 }
 
+// img is stored inside folder images/generation or it can be displayed directly
+// Uses Library CImg: https://cimg.eu/
 void drawImage(const glm::vec2& imgSize, const std::vector<glm::vec2>& imagePoints, const std::vector<glm::vec3>& imageColors, const int& angleDegree,const bool& saveImage, const bool& displayImage) {
 	// create image
 	CImg<unsigned char> img(imgSize.x, imgSize.y, 1, 3);
@@ -484,6 +494,7 @@ void drawImage(const glm::vec2& imgSize, const std::vector<glm::vec2>& imagePoin
 
 
 // Sending out Rays
+// Concept: https://cg.informatik.uni-freiburg.de/course\_notes/graphics\_01\_raycasting.pdf
 // Sends out Rays and returns the corresponding color for each pixel
 ImageData sendRaysAndIntersectPointsColors(const glm::vec2& imageSize, const glm::vec4& lightPos, ObjectManager* objManager) {
 	Ray ray(glm::vec3(0.0f, 0.0f, 400.0f));
@@ -534,6 +545,7 @@ int main()
 		float radians = glm::radians(angleDegree); // Convert angle from degrees to radians
 		float circleX = radius * std::cos(radians); // Calculate x coordinate on the circle
 		float circleZ = radius * std::sin(radians); // Calculate z coordinate on the circle
+		// Modelview Transform
 		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -50.f, circleZ), glm::vec3(glm::radians(30.f), glm::radians(angleDegree + 90), glm::radians(0.f)));
 
 		// 1 Cube Ground
@@ -664,6 +676,7 @@ int main()
 		float radians = glm::radians(angleDegree); // Convert angle from degrees to radians
 		float circleX = radius * std::cos(radians); // Calculate x coordinate on the circle
 		float circleZ = radius * std::sin(radians); // Calculate z coordinate on the circle
+		// Modelview Transform
 		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, -50.f, circleZ), glm::vec3(glm::radians(30.f), glm::radians(angleDegree + 90), glm::radians(0.f)));
 
 		objManager.loadObjFile("./obj/cat/cat.obj");
@@ -681,7 +694,7 @@ int main()
 
 
 
-		
+		/*
 		// One Sample Cube for Testing
 		
 		// Inititate Scene with view Matrix
@@ -700,11 +713,11 @@ int main()
 		// objManager.transformTriangles("cube.obj", Transformation::changeObjPosition(glm::vec3(0.f, 10.f, 0.f)));
 		objManager.transformTriangles("cube.obj", glm::inverse(viewMatrix));
 		objManager.createBoundingHierarchy("cube.obj");
+		*/
+
+
+
 		
-
-
-
-		/*
 		// Scene with 4 Cubes in different colors
 
 		// Inititate Scene with view Matrix
@@ -712,6 +725,7 @@ int main()
 		float radians = glm::radians(angleDegree); // Convert angle from degrees to radians
 		float circleX = radius * std::cos(radians); // Calculate x coordinate on the circle
 		float circleZ = radius * std::sin(radians); // Calculate z coordinate on the circle
+		// Modelview Transform
 		glm::mat4 viewMatrix = Transformation::createViewMatrix(glm::vec3(circleX, 0.f, circleZ), glm::vec3(glm::radians(0.f), glm::radians(angleDegree + 90), glm::radians(0.f)));
 
 		// Load Cube Triangles and scale it
@@ -746,7 +760,7 @@ int main()
 		objManager.createBoundingHierarchy("cube1.obj");
 		objManager.createBoundingHierarchy("cube2.obj");
 		objManager.createBoundingHierarchy("cube3.obj");
-		*/
+		
 		
 
 		// Draw Image

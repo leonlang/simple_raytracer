@@ -200,6 +200,8 @@ bool compareZPointsOfTriangle(const Triangle& a, const Triangle& b) {
     return a.pointOne.z < b.pointOne.z;
 }
 
+// Hierarchical Bounding around Objects
+// Creates a Box around a triangulated object
 std::pair<glm::vec3,glm::vec3> calculateBoundingBoxes(const std::vector<Triangle>& triangles) {
 
     glm::vec3 minBox = glm::vec3(FLT_MAX, FLT_MAX, FLT_MAX);;
@@ -218,7 +220,8 @@ std::pair<glm::vec3,glm::vec3> calculateBoundingBoxes(const std::vector<Triangle
     return { minBox, maxBox };
 }
 
-
+// Hierarchical Bounding around Objects
+// Triangle Object gets split based on the longest side
 void ObjectManager::splitTrianglesForBox(Node* root) {
     // Sort triangles: The largest Side of the Box is sorted so I can cut this side of the box in Half
     // (Triangles get put into right or left side of Tree)
@@ -267,6 +270,8 @@ void ObjectManager::splitTrianglesForBox(Node* root) {
     // std::cout << "Triangles" << triangleSize << "Left" << trianglesLeftSide.size() << "Right" << trianglesRightSide.size() << std::endl;
 
 }
+// Hierarchical Bounding around Objects
+// Concept: https://cg.informatik.uni-freiburg.de/course\_notes/graphics\_01\_raycasting.pdf
 void  ObjectManager::createBoundingHierarchy(const std::string& objFilename) {
 
     std::vector<Triangle>& triangles = objTriangles[objFilename];

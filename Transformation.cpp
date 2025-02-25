@@ -1,7 +1,7 @@
 #include "Transformation.h"
 
-// Homogeneous Notation
-// Concept for the Transformations: https://cg.informatik.uni-freiburg.de/course_notes/graphics_03_homogeneousNotation.pdf
+// Homogeneous Notation and ModelView Transform
+// Concept for the Transformations and for ModelView: https://cg.informatik.uni-freiburg.de/course_notes/graphics_03_homogeneousNotation.pdf
 
 glm::mat4 Transformation::scaleObj(float sx, float sy, float sz) {
     glm::mat4 matrix = glm::mat4(0.0f);
@@ -80,7 +80,7 @@ glm::mat4 Transformation::changeObjPosition(glm::vec3 position) {
     translationMatrix[3] = glm::vec4(position, 1.0f);
     return translationMatrix;
 }
-
+// Model View Transform
 glm::mat4 Transformation::createViewMatrix(glm::vec3 position, glm::vec3 rotation) {
     glm::mat4 matrix = changeObjPosition(position);
     matrix *= rotateObjZ(rotation.z);
